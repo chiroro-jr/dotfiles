@@ -9,72 +9,32 @@
   {
     "context": "Workspace",
     "bindings": {
-      // "shift shift": "file_finder::Toggle"
-    }
-  },
-  {
-    "context": "Editor",
-    "bindings": {
-      // "j k": ["workspace::SendKeystrokes", "escape"]
-    }
-  },
-  {
-    "context": "Workspace",
-    "bindings": {
-      "ctrl-k ctrl-e": "project_panel::ToggleFocus"
-    }
-  },
-  {
-    "context": "Workspace",
-    "bindings": {
+      // "shift shift": "file_finder::Toggle",
+      "ctrl-k ctrl-e": "project_panel::ToggleFocus",
       "ctrl-k ctrl-g": "git_panel::ToggleFocus"
     }
   },
   {
-    "context": "Terminal",
-    "bindings": {
-      "ctrl-n": "workspace::NewTerminal"
-    }
-  },
-  {
     "context": "Editor",
     "bindings": {
-      "ctrl-alt-l": "editor::SelectLine"
-    }
-  },
-  {
-    "context": "Editor",
-    "bindings": {
-      "ctrl-l": "editor::DuplicateLineDown"
-    }
-  },
-  {
-    "context": "Editor",
-    "bindings": {
+      // "j k": ["workspace::SendKeystrokes", "escape"],
+      "ctrl-alt-l": "editor::SelectLine",
+      "ctrl-l": "editor::DuplicateLineDown",
       "ctrl-shift-l": "editor::DuplicateLineUp"
     }
   },
   {
     "context": "Terminal",
     "bindings": {
-      "ctrl-i": "assistant::InlineAssist"
-    }
-  },
-  {
-    "context": "!ContextEditor > (Editor && mode == full)",
-    "bindings": {
-      "ctrl-i": "assistant::InlineAssist"
-    }
-  },
-  {
-    "context": "Terminal",
-    "bindings": {
+      "ctrl-n": "workspace::NewTerminal",
+      "ctrl-i": "assistant::InlineAssist",
       "ctrl-enter": null
     }
   },
   {
     "context": "!ContextEditor > (Editor && mode == full)",
     "bindings": {
+      "ctrl-i": "assistant::InlineAssist",
       "ctrl-enter": null
     }
   },
