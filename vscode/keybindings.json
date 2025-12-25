@@ -14,14 +14,8 @@
   },
   {
     "key": "ctrl+k ctrl+i",
-    "command": "workbench.panel.chat",
-    "when": "!workbench.panel.chat.view.copilot.active"
+    "command": "workbench.panel.chat"
   },
-  //   {
-  //     "key": "ctrl+k ctrl+i",
-  //     "command": "workbench.action.chat.open",
-  //     "when": "chatPanelParticipantRegistered || chatSetupInstalled"
-  //   },
   {
     "key": "ctrl+k ctrl+g",
     "command": "workbench.view.scm"
@@ -45,28 +39,6 @@
   {
     "key": "ctrl+t",
     "command": "workbench.action.terminal.toggleTerminal"
-  },
-
-  /**
-   * Toggle Font Size
-   **/
-  {
-    "key": "ctrl+k ctrl+k",
-    "command": "toggle",
-    "when": "editorTextFocus",
-    "args": {
-      "id": "fontSize",
-      "value": [
-        {
-          "editor.fontSize": 15,
-          "editor.lineHeight": 35
-        },
-        {
-          "editor.fontSize": 15,
-          "editor.lineHeight": 22
-        }
-      ]
-    }
   },
 
   /**
