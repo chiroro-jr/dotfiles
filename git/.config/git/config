@@ -1,0 +1,75 @@
+[user]
+    name = Nyasha D. Chiroro
+    email = chirorodennis@gmail.com
+
+[core]
+    compression = 9
+    whitespace = error
+    preloadindex = true
+    editor = code --wait
+
+[commit]
+    autocrlf = input
+    gpgSign = true
+    template = ~/.config/git/template
+    verbose = true  # add more context to commit messages
+
+[advice]
+    addEmptyPathspec = false
+    pushNonFastForward = false
+    statusHints = false
+
+[init]
+    defaultBranch = main
+
+[status]
+    branch = true
+    short = true
+    showStash = true
+    showUntrackedFiles = all
+
+[diff]
+    context = 3
+    renames = copies
+    interHunkContext = 10
+    algorithm = histogram
+    colorMoved = plain
+    mnemonicPrefix = true
+
+[push]
+    autoSetupRemote = true
+    default = current
+    followTags = true
+
+[pull]
+    default = current
+    rebase = true
+
+[rebase]
+    autoStash = true
+    missingCommitsCheck = warn
+
+[alias]
+    co = checkout
+    br = branch
+    ci = commit
+    st = status
+
+[column]
+    ui = auto
+
+[branch]
+    sort = -committerdate
+
+[tag]
+    sort = -version:refname
+
+[rerere]
+    enabled = true
+    autoupdate = true
+
+[merge]
+    tool = vscode
+
+[mergetool "vscode"]
+    cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED

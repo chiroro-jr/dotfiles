@@ -1,0 +1,191 @@
+{
+  /**
+   * Better Defaults
+   **/
+  "editor.copyWithSyntaxHighlighting": false,
+  "diffEditor.ignoreTrimWhitespace": false,
+  "editor.emptySelectionClipboard": false,
+  "workbench.editor.enablePreview": false,
+  "window.newWindowDimensions": "inherit",
+  "editor.multiCursorModifier": "ctrlCmd",
+  "files.trimTrailingWhitespace": true,
+  "diffEditor.renderSideBySide": false,
+  "editor.snippetSuggestions": "bottom",
+  "editor.detectIndentation": false,
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "window.menuBarVisibility": "toggle",
+  "editor.formatOnSave": false,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.biome": "explicit"
+  },
+  "workbench.sideBar.location": "right",
+  "workbench.statusBar.visible": true,
+  "workbench.editor.showTabs": "single",
+  "editor.guides.indentation": false,
+  "editor.minimap.enabled": false,
+  "editor.lineNumbers": "on",
+  "window.titleBarStyle": "native",
+  "scm.diffDecorations": "none",
+  "editor.hover.enabled": "on",
+  "editor.matchBrackets": "never",
+  "workbench.tips.enabled": true,
+  "editor.colorDecorators": false,
+  "git.decorations.enabled": false,
+  "workbench.startupEditor": "none",
+  "editor.lightbulb.enabled": "off",
+  "editor.selectionHighlight": false,
+  "editor.overviewRulerBorder": false,
+  "editor.renderLineHighlight": "none",
+  "editor.occurrencesHighlight": "off",
+  "problems.decorations.enabled": false,
+  "editor.renderControlCharacters": false,
+  "editor.hideCursorInOverviewRuler": true,
+  "editor.gotoLocation.multipleReferences": "goto",
+  "editor.gotoLocation.multipleDefinitions": "goto",
+  "editor.gotoLocation.multipleDeclarations": "goto",
+  "workbench.editor.enablePreviewFromQuickOpen": false,
+  "editor.gotoLocation.multipleImplementations": "goto",
+  "editor.gotoLocation.multipleTypeDefinitions": "goto",
+
+  /**
+   * Typography
+   **/
+  "workbench.colorTheme": "Gruvbox Dark Hard",
+  "editor.fontFamily": "JetBrainsMono Nerd Font",
+  "editor.fontLigatures": true,
+  "editor.fontSize": 15,
+  "editor.fontWeight": "500",
+  "editor.lineHeight": 35,
+  "editor.suggestFontSize": 15,
+  "editor.suggestLineHeight": 28,
+  "terminal.integrated.fontSize": 15,
+  "terminal.integrated.lineHeight": 1.5,
+  "window.customTitleBarVisibility": "auto",
+  "window.commandCenter": false,
+  "workbench.layoutControl.enabled": false,
+
+  /**
+   * Find
+   **/
+  "search.useIgnoreFiles": false,
+  "search.exclude": {
+    // Hide everything in /vendor, except the "laravel" and "livewire" folder.
+    "**/vendor/{[^l],?[^ai]}*": true,
+    // Hide everything in /public, except "index.php"
+    "**/public/{[^i],?[^n]}*": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/_ide_helper.php": true,
+    "**/composer.lock": true,
+    "**/package-lock.json": true,
+    "storage": true,
+    ".phpunit.result.cache": true,
+    "**/.git": true,
+    "**/.next": true
+  },
+
+  /**
+   * TailwindCSS
+   */
+  "tailwindCSS.includeLanguages": {
+    "templ": "html"
+  },
+  "files.autoSave": "onFocusChange",
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+
+  /**
+   * Elixir
+   */
+  "emmet.includeLanguages": {
+    "phoenix-heex": "html",
+    "javascript": "javascriptreact",
+    "typescript": "typescriptreact"
+  },
+  "svelte.enable-ts-plugin": true,
+  "[svelte]": {
+    "editor.defaultFormatter": "svelte.svelte-vscode"
+  },
+  "terminal.integrated.defaultProfile.linux": "fish",
+  "editor.linkedEditing": true,
+  "[html]": {
+    "editor.defaultFormatter": "vscode.html-language-features"
+  },
+  "terminal.integrated.fontFamily": "FiraCode Nerd Font",
+  "[css]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[astro]": {
+    "editor.defaultFormatter": "astro-build.astro-vscode"
+  },
+  "svg.preview.mode": "svg",
+  "workbench.iconTheme": "vscode-jetbrains-icon-theme-2023-auto",
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.formatOnType": true,
+    "editor.rulers": [80],
+    "editor.selectionHighlight": false,
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+  "github.copilot.nextEditSuggestions.enabled": true,
+  "pgsql.serverGroups": [
+    {
+      "name": "Servers",
+      "id": "FE3DE8BB-1717-46C0-AF49-02201E48296B",
+      "isDefault": true
+    }
+  ],
+  "pgsql.connections": [
+    {
+      "id": "A5EDD46F-4F51-497D-98F2-6B8D56697839",
+      "groupId": "FE3DE8BB-1717-46C0-AF49-02201E48296B",
+      "authenticationType": "SqlLogin",
+      "connectTimeout": 15,
+      "applicationName": "vscode-pgsql",
+      "user": "rent_n_go",
+      "database": "rent_n_go_db",
+      "imageName": "postgres",
+      "imageVersion": "latest",
+      "profileName": "rent_n_go",
+      "containerName": "rent_n_go",
+      "password": "",
+      "savePassword": false,
+      "port": 54859,
+      "imageRegistry": "",
+      "server": "localhost",
+      "expiresOn": 0,
+      "profileSource": 0,
+      "emptyPasswordInput": false
+    }
+  ],
+  "extensions.ignoreRecommendations": true,
+  "chat.todoListTool.enabled": true,
+  "[dockercompose]": {
+    "editor.insertSpaces": true,
+    "editor.tabSize": 2,
+    "editor.autoIndent": "advanced",
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "[github-actions-workflow]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "geminicodeassist.project": "boreal-calculus-spt58",
+  "geminicodeassist.displayInlineContextHint": false,
+  "geminicodeassist.inlineSuggestions.enableAuto": false,
+  "claudeCode.preferredLocation": "sidebar"
+}
