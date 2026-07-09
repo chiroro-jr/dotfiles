@@ -42,10 +42,68 @@ The `run-all.sh` script orchestrates the following process:
     - Changes the default shell to `fish`.
     - Removes orphaned packages.
 
+## Rclone Google Drive photos backup
+
+Install rclone:
+
+```bash
+./packages/install-rclone.sh
+```
+
+Configure Google Drive once:
+
+```bash
+rclone config
+```
+
+Use remote name `gdrive`, storage `drive`, scope `drive`, browser auth. For backups, use `rclone copy` only; it uploads new/changed files and does not delete Drive files.
+
+Manual photos backup:
+
+```bash
+cd /mnt/Nebula/gdrive/photos
+rclone copy . gdrive:photos -P
+```
+
+Enable nightly backup from `00:00` with max runtime `6h`:
+
+```bash
+mkdir -p ~/.config/systemd/user
+ln -sf ~/omarchy-customization/services/rclone-photos-backup.service ~/.config/systemd/user/
+ln -sf ~/omarchy-customization/services/rclone-photos-backup.timer ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now rclone-photos-backup.timer
+```
+
+Check timer/status/logs:
+
+```bash
+systemctl --user list-timers rclone-photos-backup.timer
+systemctl --user status rclone-photos-backup.service
+journalctl --user -u rclone-photos-backup.service -f
+tail -f ~/.local/state/rclone/photos-backup.log
+```
+
+Manual service run:
+
+```bash
+systemctl --user start rclone-photos-backup.service
+```
+
+Uninstall rclone:
+
+```bash
+./packages/uninstall-rclone.sh
+```
+
 ## Scripts Overview
 
 - `run-all.sh`: The main entry point that executes all other scripts in the correct order.
 - `install-*.sh`: Scripts dedicated to installing specific tools or packages (e.g., `install-fish.sh`, `install-vscode.sh`).
+- `packages/install-rclone.sh`: Downloads the latest rclone Linux release directly from GitHub Releases, verifies `SHA256SUMS`, installs to `~/.local/share/rclone`, and symlinks `~/.local/bin/rclone`.
+- `packages/uninstall-rclone.sh`: Removes the release-based rclone install.
+- `scripts/rclone-photos-backup.sh`: Copies `/mnt/Nebula/gdrive/photos` to `gdrive:photos` without deleting Google Drive files.
+- `services/rclone-photos-backup.{service,timer}`: User systemd service/timer for nightly rclone photos backup.
 - `install-cursor-cli.sh`: Installs Cursor CLI using the official installer from `https://cursor.com/install`.
 - `install-pi-coding-agent.sh`: Downloads the latest Pi Coding Agent Linux release directly from GitHub Releases, verifies `SHA256SUMS`, installs to `~/.local/share/pi-coding-agent`, and symlinks `~/.local/bin/pi`.
 - `uninstall-pi-coding-agent.sh`: Removes the release-based Pi install.
