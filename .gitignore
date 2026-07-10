@@ -1,0 +1,18 @@
+.mcp_data/
+
+# Editor metadata
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Patch and backup artifacts
+*.bak
+*.orig
+*.rej
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db
