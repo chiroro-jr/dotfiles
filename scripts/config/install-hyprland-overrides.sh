@@ -3,8 +3,8 @@
 set -e
 
 HYPRLAND_CONFIG="$HOME/.config/hypr/hyprland.conf"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-OVERRIDES_CONFIG="$SCRIPT_DIR/hyprland-overrides.conf"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+OVERRIDES_CONFIG="$REPO_ROOT/config/hyprland-overrides.conf"
 SOURCE_LINE="source = $OVERRIDES_CONFIG"
 
 # Check if hyprland config exists
