@@ -23,11 +23,28 @@ Run the curated setup sequence:
 ./scripts/bootstrap.sh
 ```
 
-Install one package:
+Install one package directly:
 
 ```bash
 ./packages/zed/install.sh
 ```
+
+Or use the interactive package selectors:
+
+```bash
+./install.sh
+./uninstall.sh
+```
+
+They list available packages and accept selections such as `1 2 4`, `2-5`, a mixed list such as `1 3-5 9`, `a` for all, or `q` to quit.
+
+```bash
+./install.sh --list
+./install.sh --all --dry-run
+./uninstall.sh --dry-run
+```
+
+`--dry-run` prints selected package scripts without running them.
 
 Apply only the Stow-managed configuration:
 

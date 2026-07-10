@@ -13,6 +13,12 @@ fail() {
 
 check_shell_syntax() {
   local script
+  for script in "$ROOT/install.sh" "$ROOT/uninstall.sh"; do
+    if ! bash -n "$script"; then
+      fail "Invalid shell syntax: ${script#"$ROOT/"}"
+    fi
+  done
+
   while IFS= read -r -d '' script; do
     if ! bash -n "$script"; then
       fail "Invalid shell syntax: ${script#"$ROOT/"}"
@@ -43,6 +49,13 @@ check_layout() {
   if [ -e "$ROOT/docs" ]; then
     fail "docs/ should not exist; its former Waydroid instructions were intentionally removed."
   fi
+
+  local entrypoint
+  for entrypoint in install.sh uninstall.sh; do
+    if [ ! -x "$ROOT/$entrypoint" ]; then
+      fail "Missing or non-executable package entrypoint: $entrypoint"
+    fi
+  done
 
   if [ ! -f "$ROOT/config/hyprland-overrides.conf" ]; then
     fail "Missing config/hyprland-overrides.conf"
