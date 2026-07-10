@@ -1,38 +1,22 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-ORIGINAL_DIR=$(pwd)
-REPO_URL="https://github.com/chiroro-jr/dotfiles"
-REPO_NAME="dotfiles"
+set -euo pipefail
 
-is_stow_installed() {
-  pacman -Qi "stow" &> /dev/null
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+STOW_DIR="$REPO_ROOT/stow"
+STOW_PACKAGES=(fish git zed)
+
+command -v stow >/dev/null 2>&1 || {
+  echo "[ERROR] GNU Stow is required. Run packages/stow/install.sh first." >&2
+  exit 1
 }
 
-if ! is_stow_installed; then
-  echo "Install stow first"
-  exit 1
-fi
+for package in "${STOW_PACKAGES[@]}"; do
+  [ -d "$STOW_DIR/$package" ] || {
+    echo "[ERROR] Missing Stow package: $package" >&2
+    exit 1
+  }
 
-cd ~
-
-# Check if the repository already exists
-if [ -d "$REPO_NAME" ]; then
-  echo "Repository '$REPO_NAME' already exists. Skipping clone"
-else
-  git clone "$REPO_URL"
-fi
-
-# Check if the clone was successful
-if [ $? -eq 0 ]; then
-  echo "removing old configs"
-  rm -rf ~/.config/fish ~/.config/git ~/.config/zed ~/.config/opencode
-
-  cd "$REPO_NAME"
-  stow fish
-  stow git
-  stow zed
-  stow opencode
-else
-  echo "Failed to clone the repository."
-  exit 1
-fi
+  echo "[INFO] Stowing $package"
+  stow --dir "$STOW_DIR" --target "$HOME" --restow "$package"
+done

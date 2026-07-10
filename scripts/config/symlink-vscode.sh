@@ -1,7 +1,8 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -e
 
-DOTFILES_DIR="$HOME/dotfiles"
+REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+DOTFILES_DIR="$REPO_ROOT/stow"
 VSCODE_DIR="$HOME/.config/Code/User"
 
 mkdir -p "$VSCODE_DIR"

@@ -48,6 +48,13 @@ check_layout() {
     fail "Missing config/hyprland-overrides.conf"
   fi
 
+  local stow_package
+  for stow_package in fish git zed vscode vscode-insiders; do
+    if [ ! -d "$ROOT/stow/$stow_package" ]; then
+      fail "Missing Stow package: stow/$stow_package"
+    fi
+  done
+
   while IFS= read -r -d '' package_dir; do
     if [ ! -f "$package_dir/install.sh" ] && [ ! -f "$package_dir/uninstall.sh" ]; then
       fail "Package directory has no install.sh or uninstall.sh: ${package_dir#"$ROOT/"}"

@@ -1,134 +1,80 @@
-# Dotfiles
+# Omarchy Workstation
 
-Personal configuration files for my Linux development environment, managed with [GNU Stow](https://www.gnu.org/software/stow/).
+One repository for this machine's user configuration and provisioning scripts.
 
-## Structure
+## Layout
 
+```text
+stow/                  GNU Stow source packages for home-directory configuration
+packages/<name>/       Per-package install.sh and optional uninstall.sh
+scripts/bootstrap.sh   Curated workstation setup sequence
+scripts/verify.sh      Static verification; never runs installers
+scripts/config/        Dotfile, Hyprland, and editor configuration tasks
+scripts/system/        System maintenance tasks
+config/                Configuration assets used by scripts
+services/              User systemd units
 ```
-dotfiles/
-├── fish/           # Fish shell configuration
-├── git/            # Git configuration
-├── vscode/         # VS Code settings
-├── vscode-insiders/# VS Code Insiders settings
-└── zed/            # Zed editor settings
-```
 
-## Installation
+## Setup
 
-Clone the repository and use GNU Stow to symlink configurations:
+Run the curated setup sequence:
 
 ```bash
-git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
-cd ~/dotfiles
-
-# Install all configurations
-stow fish git vscode zed
-
-# Or install individually
-stow fish
-stow git
+./scripts/bootstrap.sh
 ```
 
-## Configurations
+Install one package:
 
-### Fish Shell
+```bash
+./packages/zed/install.sh
+```
 
-Located in `fish/.config/fish/conf.d/`:
+Apply only the Stow-managed configuration:
 
-- **aliases.fish** - Shell aliases and functions
-  - File navigation with `eza` (enhanced `ls`) and `zoxide` (smart `cd`)
-  - Git shortcuts (`g`, `gs`, `gd`, `gp`, etc.)
-  - Tool shortcuts (`d` for docker, `r` for rails, `n` for nvim)
-  - Directory traversal (`..`, `...`, `....`)
+```bash
+./scripts/config/install-dotfiles.sh
+```
 
-- **envs.fish** - Environment variables
-  - Editor configuration
-  - BAT theme settings
+VS Code settings are linked separately:
 
-- **functions.fish** - Custom utility functions
-  - `img2jpg` - Convert images to optimized JPG
-  - `img2jpg-small` - Convert images to web-optimized JPG (max 1080px)
-  - `img2png` - Convert images to optimized PNG
+```bash
+./scripts/config/symlink-vscode.sh
+```
 
-- **init.fish** - Tool initializations
-  - [mise](https://mise.jdx.dev/) - Dev tool version manager
-  - [Starship](https://starship.rs/) - Cross-shell prompt
-  - [zoxide](https://github.com/ajeetdsouza/zoxide) - Smarter cd
-  - [fzf](https://github.com/junegunn/fzf) - Fuzzy finder
+## Safe verification
 
-### Git
+Static verification checks shell syntax, repository layout, Stow package presence, and every bootstrap path. It does not invoke installers, modify configuration, install packages, or call the network.
 
-Located in `git/.config/git/`:
+```bash
+./scripts/verify.sh
+# or
+./scripts/bootstrap.sh --check
+```
 
-- **config** - Git configuration
-  - GPG commit signing enabled
-  - VS Code as merge tool and editor
-  - Optimized diff settings (histogram algorithm)
-  - Auto-setup remote on push
-  - Rerere enabled for conflict resolution
-  - Branch sorting by commit date
+## Local secrets
 
-- **template** - Commit message template with emoji suggestions for conventional commits
+Never commit API tokens, passwords, or private keys. Keep them in an ignored file outside this repository, then source that file conditionally from your local shell configuration.
 
-- **ignore** - Global gitignore patterns
+## Rclone Google Drive photo backup
 
-### VS Code / VS Code Insiders
+Install rclone:
 
-Both share identical configurations:
+```bash
+./packages/rclone/install.sh
+```
 
-- **settings.json** - Editor settings
-  - Gruvbox Dark Hard theme
-  - JetBrainsMono Nerd Font with ligatures
-  - Minimal UI (no minimap, single tab, sidebar on right)
-  - Biome as default formatter for JS/TS
-  - Fish as default terminal
-  - TailwindCSS and Emmet configurations
+Configure the `gdrive` remote once:
 
-- **keybindings.json** - Custom keyboard shortcuts
-  - Panel navigation (`Ctrl+K Ctrl+E/G/D/X`)
-  - Split panel management (`Alt+N/H/L/W`)
-  - Terminal splits and navigation
-  - Line manipulation (`Ctrl+L` duplicate, `Ctrl+J` join)
-  - Emmet shortcuts (`Ctrl+M` prefix)
-  - Multi-cursor enhancements
+```bash
+rclone config
+```
 
-### Zed
+Enable the nightly timer:
 
-Located in `zed/.config/zed/`:
-
-- **settings.json** - Editor settings
-  - JetBrainsMono Nerd Font
-  - KTRZ Monokai (dark) / One Light themes
-  - Copilot edit predictions
-  - Tab bar hidden, preview tabs disabled
-  - MCP context servers configured (context7, shadcn, chrome-devtools, deepwiki)
-
-- **keymap.json** - Custom keybindings
-  - Panel toggles matching VS Code (`Ctrl+K Ctrl+E/G`)
-  - Line duplication (`Ctrl+L`)
-  - Inline AI assist (`Ctrl+I`)
-  - Emmet wrap with tag (`Ctrl+M Ctrl+W`)
-
-## Dependencies
-
-These configurations expect the following tools to be installed:
-
-| Tool | Purpose |
-|------|---------|
-| [fish](https://fishshell.com/) | Shell |
-| [eza](https://github.com/eza-community/eza) | Modern ls replacement |
-| [zoxide](https://github.com/ajeetdsouza/zoxide) | Smarter cd |
-| [fzf](https://github.com/junegunn/fzf) | Fuzzy finder |
-| [bat](https://github.com/sharkdp/bat) | Cat with syntax highlighting |
-| [starship](https://starship.rs/) | Shell prompt |
-| [mise](https://mise.jdx.dev/) | Dev tool version manager |
-| [ImageMagick](https://imagemagick.org/) | Image conversion functions |
-
-### Fonts
-
-- JetBrainsMono Nerd Font
-- FiraCode Nerd Font
-
-## License
-
-MIT
+```bash
+mkdir -p ~/.config/systemd/user
+ln -sf "$PWD/services/rclone-photos-backup.service" ~/.config/systemd/user/
+ln -sf "$PWD/services/rclone-photos-backup.timer" ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now rclone-photos-backup.timer
+```
