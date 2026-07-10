@@ -66,6 +66,11 @@ Installed paths:
 
 Options:
   -h, --help  Show this help message.
+
+Environment:
+  GITHUB_TOKEN  Optional GitHub personal access token used only for the
+                GitHub release API request. Raises its rate limit from 60 to
+                5,000 requests per hour.
 EOF
 }
 
@@ -93,6 +98,21 @@ download_file() {
   fi
 
   error "curl or wget is required to download files."
+}
+
+download_github_api_file() {
+  local url="$1"
+  local out="$2"
+  local headers=(
+    -H "Accept: application/vnd.github+json"
+    -H "X-GitHub-Api-Version: 2022-11-28"
+  )
+
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+  fi
+
+  curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$out"
 }
 
 require_python() {
@@ -132,7 +152,7 @@ ensure_runtime_dependencies() {
 resolve_stable_release_metadata() {
   local metadata_path="$1"
 
-  download_file "$LATEST_STABLE_RELEASE_API_URL" "$metadata_path"
+  download_github_api_file "$LATEST_STABLE_RELEASE_API_URL" "$metadata_path"
 
   python3 - "$metadata_path" "$ASSET_NAME" <<'PY'
 import json
@@ -210,6 +230,11 @@ main() {
   metadata_path="$tmp_dir/release.json"
 
   info "Resolving latest Zed stable release from ${LATEST_STABLE_RELEASE_API_URL}..."
+  if [ -n "${GITHUB_TOKEN:-}" ]; then
+    info "Using GITHUB_TOKEN for the GitHub API request."
+  else
+    warn "GITHUB_TOKEN is not set; GitHub's anonymous API rate limit applies."
+  fi
   mapfile -t release_data < <(resolve_stable_release_metadata "$metadata_path")
 
   if [ "${#release_data[@]}" -lt 3 ]; then

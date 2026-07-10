@@ -68,6 +68,33 @@ download_file() {
   error "curl or wget is required to download files."
 }
 
+download_github_api_file() {
+  local url="$1"
+  local out="$2"
+
+  if command -v curl >/dev/null 2>&1; then
+    local headers=(
+      -H "Accept: application/vnd.github+json"
+      -H "X-GitHub-Api-Version: 2022-11-28"
+    )
+    [ -z "${GITHUB_TOKEN:-}" ] || headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+    curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$out"
+    return
+  fi
+
+  if command -v wget >/dev/null 2>&1; then
+    local headers=(
+      --header="Accept: application/vnd.github+json"
+      --header="X-GitHub-Api-Version: 2022-11-28"
+    )
+    [ -z "${GITHUB_TOKEN:-}" ] || headers+=(--header="Authorization: Bearer $GITHUB_TOKEN")
+    wget -qO "$out" "${headers[@]}" "$url"
+    return
+  fi
+
+  error "curl or wget is required to download files."
+}
+
 require_python() {
   command -v python3 >/dev/null 2>&1 || error "python3 is required to parse GitHub release metadata."
 }
@@ -83,7 +110,7 @@ resolve_release_metadata() {
     api_url="$LATEST_STABLE_RELEASE_API_URL"
   fi
 
-  download_file "$api_url" "$metadata_path"
+  download_github_api_file "$api_url" "$metadata_path"
 
   python3 - "$metadata_path" "$release_channel" <<'PY'
 import json
