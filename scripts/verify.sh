@@ -77,6 +77,7 @@ check_bootstrap_sequence() {
   check_bootstrap_order "packages/mise/install.sh" "packages/bun/install.sh"
   check_bootstrap_order "packages/codex/install.sh" "packages/worktrunk/install.sh"
   check_bootstrap_order "packages/fish/install.sh" "scripts/system/change-shell.sh"
+  check_bootstrap_order "packages/hitch/install.sh" "scripts/system/change-shell.sh"
   check_bootstrap_order "scripts/config/install-dotfiles.sh" "scripts/config/install-hyprland-overrides.sh"
   check_bootstrap_order "scripts/system/uninstall-unwanted-programs.sh" "scripts/system/remove-orphans.sh"
   check_bootstrap_order "scripts/system/remove-orphans.sh" "scripts/system/change-shell.sh"

@@ -20,6 +20,7 @@ INSTALLERS=(
   "packages/codex/install.sh"
   "packages/worktrunk/install.sh"
   "packages/fish/install.sh"
+  "packages/hitch/install.sh"
   "packages/gemini-cli/install.sh"
   "packages/cursor-cli/install.sh"
   "packages/cursor/install.sh"
