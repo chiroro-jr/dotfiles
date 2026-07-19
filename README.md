@@ -73,6 +73,36 @@ Never commit API tokens, passwords, or private keys. Fish secrets belong in
 `~/.config/fish/conf.d/secrets.fish`, which is intentionally not managed by
 Stow and is ignored if accidentally copied into this repository.
 
+## 1Password-backed secrets
+
+The scripts default to the `Personal` vault. Override it with `OP_VAULT`; item
+names can be overridden with `OP_SHELL_SECRETS_ITEM` and
+`OP_PROJECT_SECRETS_DOCUMENT`.
+
+Create a 1Password item named `Workstation Shell Secrets` with password fields
+named `OPENCODE_API_KEY`, `NEURALWATT_API_KEY`, and `GITHUB_TOKEN`, then generate
+the ignored local Fish file:
+
+```bash
+./scripts/config/restore-shell-secrets.sh
+```
+
+Back up the complete local `~/.config/projects` directory as one 1Password
+Document, creating it on the first run and updating it afterward:
+
+```bash
+./scripts/config/backup-project-secrets.sh
+```
+
+Restore that archive on a new machine. Any existing directory is moved to a
+timestamped backup before extraction:
+
+```bash
+./scripts/config/restore-project-secrets.sh
+```
+
+Android signing keys should also have a second encrypted offline backup.
+
 ## Rclone Google Drive photo backup
 
 Install rclone:
