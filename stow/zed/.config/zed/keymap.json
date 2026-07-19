@@ -11,8 +11,29 @@
     "bindings": {
       // "shift shift": "file_finder::Toggle",
       "ctrl-k ctrl-e": "project_panel::ToggleFocus",
-      "ctrl-k ctrl-g": "git_panel::ToggleFocus"
-    }
+      "ctrl-k ctrl-g": "git_panel::ToggleFocus",
+      "ctrl-k ctrl-s": "multi_workspace::ToggleWorkspaceSidebar",
+      "ctrl-k ctrl-a": "agent::ToggleFocus",
+      "ctrl-k ctrl-o": "outline_panel::ToggleFocus",
+      "ctrl-k ctrl-d": "debug_panel::ToggleFocus",
+      "ctrl-k ctrl-m": "diagnostics::Deploy",
+      "ctrl-b": "workspace::ToggleLeftDock",
+    },
+  },
+  {
+    "context": "ProjectPanel",
+    "bindings": {
+      "enter": "project_panel::Open",
+      "ctrl-r": "project_panel::Rename",
+      "ctrl-c": "project_panel::Copy",
+      "ctrl-x": "project_panel::Cut",
+      "alt-p": "project_panel::Paste",
+      "ctrl-d": ["project_panel::Trash", { "skip_prompt": false }],
+      "ctrl-shift-d": ["project_panel::Delete", { "skip_prompt": false }],
+      "ctrl-n": "project_panel::NewFile",
+      "ctrl-shift-n": "project_panel::NewDirectory",
+      "ctrl-f": "project_panel::NewSearchInDirectory",
+    },
   },
   {
     "context": "Editor",
@@ -20,27 +41,43 @@
       // "j k": ["workspace::SendKeystrokes", "escape"],
       "ctrl-alt-l": "editor::SelectLine",
       "ctrl-l": "editor::DuplicateLineDown",
-      "ctrl-shift-l": "editor::DuplicateLineUp"
-    }
+      "ctrl-shift-l": "editor::DuplicateLineUp",
+      "ctrl-alt-d": ["editor::SelectNext", { "replace_newest": true }],
+    },
   },
   {
     "context": "Terminal",
     "bindings": {
       "ctrl-n": "workspace::NewTerminal",
       "ctrl-i": "assistant::InlineAssist",
-      "ctrl-enter": null
-    }
+      "ctrl-enter": null,
+      "ctrl-b": "workspace::ToggleLeftDock",
+      "ctrl-w": ["pane::CloseActiveItem", { "close_pinned": false }],
+      "ctrl-k ctrl-w": ["pane::CloseAllItems", { "close_pinned": false }],
+    },
   },
   {
     "context": "!ContextEditor > (Editor && mode == full)",
     "bindings": {
       "ctrl-i": "assistant::InlineAssist",
-      "ctrl-enter": null
-    }
+      "ctrl-enter": null,
+    },
   },
   {
     "bindings": {
-      "ctrl-m ctrl-w": "editor::WrapSelectionsInTag"
-    }
-  }
+      "ctrl-m ctrl-w": "editor::WrapSelectionsInTag",
+    },
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-shift-b": "agent::ToggleFocus",
+    },
+  },
+  {
+    "context": "Workspace",
+    "unbind": {
+      "ctrl-?": "agent::ToggleFocus",
+    },
+  },
 ]

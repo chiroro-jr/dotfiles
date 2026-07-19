@@ -1,0 +1,65 @@
+// Gram keymap
+//
+// For information on binding keys, see the Gram
+// documentation: gram://docs/key-bindings
+//
+// To see the default key bindings run `gram: open default keymap`
+// from the command palette.
+[
+  {
+    "context": "Workspace",
+    "bindings": {
+      // "shift shift": "file_finder::Toggle",
+      "ctrl-k ctrl-e": "project_panel::ToggleFocus",
+      "ctrl-k ctrl-g": "git_panel::ToggleFocus",
+      "ctrl-k ctrl-o": "outline_panel::ToggleFocus",
+      "ctrl-k ctrl-d": "debug_panel::ToggleFocus",
+      "ctrl-k ctrl-m": "diagnostics::Deploy",
+      "ctrl-b": "workspace::ToggleLeftDock"
+    }
+  },
+  {
+    "context": "ProjectPanel",
+    "bindings": {
+      "enter": "project_panel::Open",
+      "r": "project_panel::Rename",
+      "c": "project_panel::Copy",
+      "x": "project_panel::Cut",
+      "p": "project_panel::Paste",
+      "d": ["project_panel::Trash", { "skip_prompt": false }],
+      "shift-d": ["project_panel::Delete", { "skip_prompt": false }],
+      "n": "project_panel::NewFile",
+      "shift-n": "project_panel::NewDirectory",
+      "f": "project_panel::NewSearchInDirectory"
+    }
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-alt-l": "editor::SelectLine",
+      "ctrl-l": "editor::DuplicateLineDown",
+      "ctrl-shift-l": "editor::DuplicateLineUp",
+      "ctrl-alt-d": ["editor::SelectNext", { "replace_newest": true }]
+    }
+  },
+  {
+    "context": "Terminal",
+    "bindings": {
+      "ctrl-n": "workspace::NewTerminal",
+      "ctrl-b": "workspace::ToggleLeftDock",
+      "ctrl-w": ["pane::CloseActiveItem", { "close_pinned": false }],
+      "ctrl-k ctrl-w": ["pane::CloseAllItems", { "close_pinned": false }]
+    }
+  },
+  {
+    "context": "Editor && vim_mode == insert",
+    "bindings": {
+      // "j k": "vim::NormalBefore"
+    }
+  },
+  {
+    "bindings": {
+      "ctrl-m ctrl-w": "editor::WrapSelectionsInTag"
+    }
+  }
+]

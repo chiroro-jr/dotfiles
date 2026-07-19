@@ -1,0 +1,14 @@
+{
+  "version": 3,
+  "skills": {
+    "gh": {
+      "source": "cli/cli",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/cli/cli.git",
+      "skillPath": "skills/gh/SKILL.md",
+      "skillFolderHash": "cc6ec4740cd90d35fdec0bb125ccbd5ad38e98e0",
+      "installedAt": "2026-06-22T06:35:02Z",
+      "updatedAt": "2026-06-22T06:40:39Z"
+    }
+  }
+}

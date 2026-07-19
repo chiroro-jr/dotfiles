@@ -1,3 +1,5 @@
+set -U fish_greeting
+
 if type -q mise
     mise activate fish | source
 end
@@ -11,13 +13,15 @@ if type -q zoxide
 end
 
 function try
-    set script_path '/usr/bin/try'
+    set script_path /usr/bin/try
+    set tries_path "$HOME/Work/tries"
+
     # Check if first argument is a known command
     switch $argv[1]
         case clone worktree init
-            set cmd (/usr/bin/env ruby $script_path --path "/home/dennis/Work/tries" $argv 2>/dev/tty)
+            set cmd (/usr/bin/env ruby $script_path --path "$tries_path" $argv 2>/dev/tty)
         case '*'
-            set cmd (/usr/bin/env ruby $script_path cd --path "/home/dennis/Work/tries" $argv 2>/dev/tty)
+            set cmd (/usr/bin/env ruby $script_path cd --path "$tries_path" $argv 2>/dev/tty)
     end
     set rc $status
     if test $rc -eq 0
@@ -33,4 +37,8 @@ end
 
 if type -q fzf
     fzf --fish | source
+end
+
+if type -q direnv
+    direnv hook fish | source
 end

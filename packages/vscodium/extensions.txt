@@ -1,0 +1,7 @@
+dart-code.dart-code
+dart-code.flutter
+highagency.pencildev
+jdinhlife.gruvbox
+oxc.oxc-vscode
+sleistner.vscode-fileutils
+thang-nm.flow-icons

@@ -12,6 +12,8 @@ DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/codium.desktop"
 BIN_DIR="$HOME/.local/bin"
 BIN_PATH="$BIN_DIR/codium"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+EXTENSIONS_FILE="$SCRIPT_DIR/extensions.txt"
 ICON_DIR="$HOME/.local/share/icons/hicolor/512x512/apps"
 ICON_PATH="$ICON_DIR/vscodium.png"
 
@@ -222,6 +224,18 @@ refresh_desktop_caches() {
   fi
 }
 
+install_extensions() {
+  local extension
+
+  [ -f "$EXTENSIONS_FILE" ] || return
+
+  while IFS= read -r extension || [ -n "$extension" ]; do
+    [ -n "$extension" ] || continue
+    "$BIN_PATH" --install-extension "$extension" ||
+      warn "Could not install VSCodium extension: $extension"
+  done < "$EXTENSIONS_FILE"
+}
+
 main() {
   local tmp_dir metadata_path tag archive_url archive_name sha_url sha_name current_version archive_path sha_path
 
@@ -302,6 +316,7 @@ main() {
   write_desktop_file
   chmod +x "$DESKTOP_FILE"
   refresh_desktop_caches
+  install_extensions
 
   info "Installed VSCodium ${tag}"
   info "Binary: $BIN_PATH"

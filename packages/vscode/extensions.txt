@@ -1,0 +1,16 @@
+bjarne.ethereal-omarchy
+catppuccin.catppuccin-vsc
+chadalen.vscode-jetbrains-icon-theme
+dbdiagram.dbdiagram-vscode
+enkia.tokyo-night
+ganevru.in-the-fog-theme
+github.vscode-pull-request-github
+highagency.pencildev
+jdinhlife.gruvbox
+jovejonovski.ocean-green
+mhutchie.git-graph
+ms-dotnettools.csharp
+ms-dotnettools.vscode-dotnet-runtime
+oldjobobo.retro-82-theme
+qufiwefefwoyn.kanagawa
+tahayvr.matteblack

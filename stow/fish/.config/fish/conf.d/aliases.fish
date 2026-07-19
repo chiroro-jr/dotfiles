@@ -34,6 +34,9 @@ alias ....='cd ../../..'
 # Tools
 alias d='docker'
 alias r='rails'
+alias codex='codex --yolo'
+alias agent='agent --yolo'
+alias art='php artisan'
 
 function n
     if test (count $argv) -eq 0
@@ -59,6 +62,3 @@ alias gb='git branch'
 alias gsw='git switch'
 alias gi='git init'
 alias gcl='git clone'
-
-# zed
-alias zed='zeditor'

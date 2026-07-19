@@ -13,6 +13,12 @@
 *.rej
 *.tmp
 
+# Local credentials and generated agent state
+stow/fish/.config/fish/conf.d/secrets.fish
+stow/opencode/.config/opencode/antigravity-accounts.json
+stow/pi/.pi/agent/auth.json
+stow/pi/.pi/agent/sessions/
+
 # OS files
 .DS_Store
 Thumbs.db

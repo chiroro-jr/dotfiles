@@ -5,21 +5,34 @@ set -euo pipefail
 BOOTSTRAP_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 
 INSTALLERS=(
+  # Foundation and managed configuration must exist before tool installers run.
   "scripts/system/install-build-dependencies.sh"
+  "packages/stow/install.sh"
+  "scripts/config/install-dotfiles.sh"
+
+  # Mise reads the Stow-managed global config; these installers must not mutate it.
   "packages/mise/install.sh"
-  "packages/fish/install.sh"
   "packages/nodejs/install.sh"
   "packages/pnpm/install.sh"
   "packages/bun/install.sh"
+
+  # System tools and applications.
+  "packages/codex/install.sh"
+  "packages/worktrunk/install.sh"
+  "packages/fish/install.sh"
   "packages/gemini-cli/install.sh"
   "packages/cursor-cli/install.sh"
   "packages/cursor/install.sh"
   "packages/opencode/install.sh"
   "packages/mariadb-clients/install.sh"
   "packages/vscode/install.sh"
+  "packages/vscodium/install.sh"
   "packages/antigravity/install.sh"
   "packages/zed/install.sh"
   "packages/zed-preview/install.sh"
+  "packages/gram/install.sh"
+  "packages/zennotes/install.sh"
+  "packages/pi-coding-agent/install.sh"
   "packages/android-studio/install.sh"
   "packages/direnv/install.sh"
   "packages/google-chrome/install.sh"
@@ -27,13 +40,12 @@ INSTALLERS=(
   "packages/t3-code/install.sh"
   "packages/pencil/install.sh"
   "packages/uv/install.sh"
-  "packages/stow/install.sh"
-  "scripts/config/install-dotfiles.sh"
+
+  # Final system integration and cleanup.
   "scripts/config/install-hyprland-overrides.sh"
-  "scripts/config/symlink-vscode.sh"
   "scripts/system/uninstall-unwanted-programs.sh"
-  "scripts/system/change-shell.sh"
   "scripts/system/remove-orphans.sh"
+  "scripts/system/change-shell.sh"
 )
 
 usage() {

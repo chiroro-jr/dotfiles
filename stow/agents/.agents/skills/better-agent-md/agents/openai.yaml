@@ -1,0 +1,4 @@
+interface:
+  display_name: "Better Agent MD"
+  short_description: "Audit and tighten agent instruction files"
+  default_prompt: "Use $better-agent-md to review this AGENTS.md file, identify weak points, and produce a tighter replacement."

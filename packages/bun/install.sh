@@ -5,5 +5,6 @@ if ! command -v mise >/dev/null 2>&1; then
     echo "Mise not installed. Run ./install-mise.sh first."
     exit 1
 fi
-# 'mise use' both installs the version and sets it in the global config
-mise use --global bun@latest
+# Install the version declared in the Stow-managed global mise config.
+# `mise install` does not rewrite that configuration.
+mise install bun

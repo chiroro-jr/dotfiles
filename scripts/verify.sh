@@ -39,6 +39,49 @@ check_bootstrap_paths() {
   done
 }
 
+check_bootstrap_order() {
+  local before="$1"
+  local after="$2"
+  local before_index=-1
+  local after_index=-1
+  local index
+
+  for index in "${!INSTALLERS[@]}"; do
+    [ "${INSTALLERS[$index]}" != "$before" ] || before_index="$index"
+    [ "${INSTALLERS[$index]}" != "$after" ] || after_index="$index"
+  done
+
+  if [ "$before_index" -lt 0 ] || [ "$after_index" -lt 0 ]; then
+    fail "Cannot verify bootstrap order: $before -> $after"
+  elif [ "$before_index" -ge "$after_index" ]; then
+    fail "Bootstrap order requires $before before $after"
+  fi
+}
+
+check_bootstrap_sequence() {
+  local installer
+  local -A seen=()
+
+  for installer in "${INSTALLERS[@]}"; do
+    if [ -n "${seen[$installer]:-}" ]; then
+      fail "Duplicate bootstrap target: $installer"
+    fi
+    seen[$installer]=1
+  done
+
+  check_bootstrap_order "scripts/system/install-build-dependencies.sh" "packages/stow/install.sh"
+  check_bootstrap_order "packages/stow/install.sh" "scripts/config/install-dotfiles.sh"
+  check_bootstrap_order "scripts/config/install-dotfiles.sh" "packages/mise/install.sh"
+  check_bootstrap_order "packages/mise/install.sh" "packages/nodejs/install.sh"
+  check_bootstrap_order "packages/mise/install.sh" "packages/pnpm/install.sh"
+  check_bootstrap_order "packages/mise/install.sh" "packages/bun/install.sh"
+  check_bootstrap_order "packages/codex/install.sh" "packages/worktrunk/install.sh"
+  check_bootstrap_order "packages/fish/install.sh" "scripts/system/change-shell.sh"
+  check_bootstrap_order "scripts/config/install-dotfiles.sh" "scripts/config/install-hyprland-overrides.sh"
+  check_bootstrap_order "scripts/system/uninstall-unwanted-programs.sh" "scripts/system/remove-orphans.sh"
+  check_bootstrap_order "scripts/system/remove-orphans.sh" "scripts/system/change-shell.sh"
+}
+
 check_layout() {
   local package_dir
 
@@ -62,7 +105,9 @@ check_layout() {
   fi
 
   local stow_package
-  for stow_package in fish git zed vscode vscode-insiders; do
+  for stow_package in \
+    agents fish git gram mise opencode pi vscode vscodium worktrunk zed \
+    zennotes; do
     if [ ! -d "$ROOT/stow/$stow_package" ]; then
       fail "Missing Stow package: stow/$stow_package"
     fi
@@ -77,6 +122,7 @@ check_layout() {
 
 check_shell_syntax
 check_bootstrap_paths
+check_bootstrap_sequence
 check_layout
 
 if [ "$failures" -gt 0 ]; then

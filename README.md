@@ -46,17 +46,16 @@ They list available packages and accept selections such as `1 2 4`, `2-5`, a mix
 
 `--dry-run` prints selected package scripts without running them.
 
-Apply only the Stow-managed configuration:
+Apply all Stow-managed configuration:
 
 ```bash
 ./scripts/config/install-dotfiles.sh
 ```
 
-VS Code settings are linked separately:
-
-```bash
-./scripts/config/symlink-vscode.sh
-```
+Stow links the selected application configs into `$HOME` without folding whole
+runtime directories such as `~/.pi` or `~/.config/opencode` into the repository.
+VS Code and VSCodium extension manifests live beside their package installers;
+the installers restore the latest available version of each listed extension.
 
 ## Safe verification
 
@@ -70,7 +69,9 @@ Static verification checks shell syntax, repository layout, Stow package presenc
 
 ## Local secrets
 
-Never commit API tokens, passwords, or private keys. Keep them in an ignored file outside this repository, then source that file conditionally from your local shell configuration.
+Never commit API tokens, passwords, or private keys. Fish secrets belong in
+`~/.config/fish/conf.d/secrets.fish`, which is intentionally not managed by
+Stow and is ignored if accidentally copied into this repository.
 
 ## Rclone Google Drive photo backup
 

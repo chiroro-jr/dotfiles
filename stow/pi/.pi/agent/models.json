@@ -1,0 +1,31 @@
+{
+  "providers": {
+    "fireworks": {
+      "models": [
+        {
+          "id": "accounts/fireworks/models/glm-5p2",
+          "name": "GLM 5.2",
+          "api": "anthropic-messages",
+          "reasoning": true,
+          "input": [
+            "text"
+          ],
+          "cost": {
+            "input": 1.4,
+            "output": 4.4,
+            "cacheRead": 0.26,
+            "cacheWrite": 1.4
+          },
+          "contextWindow": 1040000,
+          "maxTokens": 131072,
+          "compat": {
+            "sendSessionAffinityHeaders": true,
+            "supportsEagerToolInputStreaming": false,
+            "supportsCacheControlOnTools": false,
+            "supportsLongCacheRetention": false
+          }
+        }
+      ]
+    }
+  }
+}

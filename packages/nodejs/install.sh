@@ -13,5 +13,6 @@ sudo pacman -S --noconfirm --needed \
     openssl \
     zlib
 
-# 'mise use' both installs the version and sets it in the global config
-mise use --global node@lts;
+# Install the version declared in the Stow-managed global mise config.
+# `mise install` does not rewrite that configuration.
+mise install node

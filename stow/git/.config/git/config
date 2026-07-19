@@ -1,75 +1,41 @@
-[user]
-    name = Nyasha D. Chiroro
-    email = chirorodennis@gmail.com
-
-[core]
-    compression = 9
-    whitespace = error
-    preloadindex = true
-    editor = code --wait
-
-[commit]
-    autocrlf = input
-    gpgSign = true
-    template = ~/.config/git/template
-    verbose = true  # add more context to commit messages
-
-[advice]
-    addEmptyPathspec = false
-    pushNonFastForward = false
-    statusHints = false
-
-[init]
-    defaultBranch = main
-
-[status]
-    branch = true
-    short = true
-    showStash = true
-    showUntrackedFiles = all
-
-[diff]
-    context = 3
-    renames = copies
-    interHunkContext = 10
-    algorithm = histogram
-    colorMoved = plain
-    mnemonicPrefix = true
-
-[push]
-    autoSetupRemote = true
-    default = current
-    followTags = true
-
-[pull]
-    default = current
-    rebase = true
-
-[rebase]
-    autoStash = true
-    missingCommitsCheck = warn
+# See https://git-scm.com/docs/git-config
 
 [alias]
-    co = checkout
-    br = branch
-    ci = commit
-    st = status
-
+	co = checkout
+	br = branch
+	ci = commit
+	st = status
+[init]
+	defaultBranch = main
+[pull]
+	rebase = true 			 # Rebase (instead of merge) on pull
+[push]
+	autoSetupRemote = true   # Automatically set upstream branch on push
+[diff]
+	algorithm = histogram    # Clearer diffs on moved/edited lines
+	colorMoved = plain       # Highlight moved blocks in diffs
+	mnemonicPrefix = true    # More intuitive refs in diff output
+[commit]
+	verbose = true           # Include diff comment in commit message template
 [column]
-    ui = auto
-
+	ui = auto 			     # Output in columns when possible
 [branch]
-    sort = -committerdate
-
+	sort = -committerdate    # Sort branches by most recent commit first
 [tag]
-    sort = -version:refname
-
+	sort = -version:refname  # Sort version numbers as you would expect
 [rerere]
-    enabled = true
-    autoupdate = true
-
-[merge]
-    tool = vscode
-
-[mergetool "vscode"]
-    cmd = code --wait --merge $REMOTE $LOCAL $BASE $MERGED
+	enabled = true           # Record and reuse conflict resolutions
+	autoupdate = true        # Apply stored conflict resolutions automatically
+[user]
+	name = Nyasha D. Chiroro
+	email = chirorodennis@gmail.com
+[credential "https://github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+[core]
+	editor = zed --wait
+[fetch]
+	prune = true
