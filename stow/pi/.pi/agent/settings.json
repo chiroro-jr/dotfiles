@@ -9,7 +9,8 @@
     "npm:pi-intercom",
     "npm:pi-web-access",
     "git:git@github.com:chiroro-jr/pi-zed-terminal-title.git",
-    "npm:@plannotator/pi-extension"
+    "npm:@plannotator/pi-extension",
+    "npm:@ff-labs/fff-bun"
   ],
   "enabledModels": [
     "openai-codex/gpt-5.5",

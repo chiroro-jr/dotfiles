@@ -256,11 +256,12 @@ main() {
     current_channel="$(cat "$CHANNEL_PATH")"
   fi
 
-  if [ "$current_version" = "$tag" ] && [ "$current_channel" = "stable" ]; then
-    info "Installed version already matches selected release (${tag}, stable). Reinstalling to refresh local files."
-  else
-    info "Updating Zed from ${current_version:-not installed}${current_channel:+ (${current_channel})} to ${tag} (stable)."
+  if [ "$current_version" = "$tag" ] && [ "$current_channel" = "stable" ] && [ -x "$BIN_PATH" ]; then
+    info "Zed is already up to date (${tag}, stable). Skipping installation."
+    return 0
   fi
+
+  info "Updating Zed from ${current_version:-not installed}${current_channel:+ (${current_channel})} to ${tag} (stable)."
 
   tmp_archive="$tmp_dir/$archive_name"
 

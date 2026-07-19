@@ -181,10 +181,11 @@ main() {
   fi
 
   if [ "$current_version" = "$tag" ] && [ -x "$BIN_PATH" ]; then
-    info "Installed version already matches latest release (${tag}). Reinstalling to refresh local files."
-  else
-    info "Updating crit from ${current_version:-not installed} to ${tag}."
+    info "crit is already up to date (${tag}). Skipping installation."
+    return 0
   fi
+
+  info "Updating crit from ${current_version:-not installed} to ${tag}."
 
   tmp_binary="$tmp_dir/$asset_name"
   checksums_path="$tmp_dir/checksums.txt"

@@ -277,10 +277,11 @@ main() {
   fi
 
   if [ "$current_version" = "$tag" ] && [ -x "$BIN_PATH" ]; then
-    info "Installed version already matches latest release (${tag}). Reinstalling to refresh local files."
-  else
-    info "Updating VSCodium from ${current_version:-not installed} to ${tag}."
+    info "VSCodium is already up to date (${tag}). Skipping installation."
+    return 0
   fi
+
+  info "Updating VSCodium from ${current_version:-not installed} to ${tag}."
 
   archive_path="$tmp_dir/$archive_name"
   sha_path="$tmp_dir/$sha_name"

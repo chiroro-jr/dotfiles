@@ -281,11 +281,12 @@ main() {
     current_version="$(cat "$VERSION_PATH")"
   fi
 
-  if [ "$current_version" = "$tag" ]; then
-    info "Installed version already matches selected release (${tag}). Reinstalling to refresh local files."
-  else
-    info "Updating T3 Code from ${current_version:-not installed} to ${tag}."
+  if [ "$current_version" = "$tag" ] && [ -x "$BIN_PATH" ]; then
+    info "T3 Code is already up to date (${tag}). Skipping installation."
+    return 0
   fi
+
+  info "Updating T3 Code from ${current_version:-not installed} to ${tag}."
 
   tmp_appimage="$tmp_dir/$asset_name"
 

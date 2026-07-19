@@ -180,10 +180,11 @@ main() {
   fi
 
   if [ "$current_version" = "$tag" ] && [ -x "$BIN_PATH" ]; then
-    info "Installed version already matches latest release (${tag}). Reinstalling to refresh local files."
-  else
-    info "Updating Pi from ${current_version:-not installed} to ${tag}."
+    info "Pi is already up to date (${tag}). Skipping installation."
+    return 0
   fi
+
+  info "Updating Pi from ${current_version:-not installed} to ${tag}."
 
   archive_path="$tmp_dir/$asset_name"
   checksums_path="$tmp_dir/SHA256SUMS"

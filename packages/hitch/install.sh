@@ -138,6 +138,11 @@ main() {
   current_version=""
   [ ! -f "$VERSION_PATH" ] || current_version="$(cat "$VERSION_PATH")"
 
+  if [ "$current_version" = "$tag" ] && [ -x "$BIN_PATH" ]; then
+    info "Hitch is already up to date (${tag}). Skipping installation."
+    return 0
+  fi
+
   info "Downloading ${asset_name} (${tag})..."
   download_file "$binary_url" "$tmp_binary"
 

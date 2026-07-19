@@ -207,11 +207,12 @@ main() {
     current_version="$(cat "$VERSION_PATH")"
   fi
 
-  if [ "$current_version" = "$tag" ]; then
-    info "Installed version already matches latest release (${tag}). Reinstalling to refresh local files."
-  else
-    info "Updating ZenNotes from ${current_version:-not installed} to ${tag}."
+  if [ "$current_version" = "$tag" ] && [ -x "$BIN_PATH" ]; then
+    info "ZenNotes is already up to date (${tag}). Skipping installation."
+    return 0
   fi
+
+  info "Updating ZenNotes from ${current_version:-not installed} to ${tag}."
 
   tmp_appimage="$tmp_dir/$asset_name"
 
