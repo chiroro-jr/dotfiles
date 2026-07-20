@@ -304,8 +304,9 @@ main() {
   tar -xzf "$archive_path" -C "$APP_DIR"
 
   [ -x "$APP_DIR/codium" ] || error "Downloaded archive did not contain an executable codium binary."
+  [ -x "$APP_DIR/bin/codium" ] || error "Downloaded archive did not contain the codium CLI launcher."
 
-  ln -sfn "$APP_DIR/codium" "$BIN_PATH"
+  ln -sfn "$APP_DIR/bin/codium" "$BIN_PATH"
   printf '%s\n' "$tag" > "$VERSION_PATH"
 
   if [ -f "$APP_DIR/resources/app/resources/linux/code.png" ]; then

@@ -8,6 +8,9 @@ RELEASES_API_URL="https://api.github.com/repos/${REPO}/releases?per_page=100"
 ICON_URL="https://raw.githubusercontent.com/pingdotgg/t3code/main/apps/desktop/resources/icon.png"
 
 INSTALL_DIR="$HOME/.local/share/t3-code"
+APP_DIR="$INSTALL_DIR/app"
+APP_RUN_PATH="$APP_DIR/AppRun"
+LAUNCHER_PATH="$INSTALL_DIR/t3-code"
 APPIMAGE_PATH="$INSTALL_DIR/T3-Code.AppImage"
 VERSION_PATH="$INSTALL_DIR/version.txt"
 DESKTOP_DIR="$HOME/.local/share/applications"
@@ -194,6 +197,17 @@ print(asset["name"])
 PY
 }
 
+write_launcher() {
+  cat > "$LAUNCHER_PATH" <<EOF
+#!/bin/sh
+export APPDIR="$APP_DIR"
+export APPIMAGE="$APP_RUN_PATH"
+exec "$APP_RUN_PATH" "\$@"
+EOF
+
+  chmod +x "$LAUNCHER_PATH"
+}
+
 write_desktop_file() {
   mkdir -p "$DESKTOP_DIR"
 
@@ -202,8 +216,8 @@ write_desktop_file() {
 Version=1.0
 Name=T3 Code
 Comment=T3 Code desktop app
-Exec=$APPIMAGE_PATH %U
-TryExec=$APPIMAGE_PATH
+Exec=$LAUNCHER_PATH %U
+TryExec=$LAUNCHER_PATH
 Icon=$ICON_PATH
 Terminal=false
 Type=Application
@@ -293,8 +307,20 @@ main() {
   info "Downloading ${asset_name}..."
   download_file "$appimage_url" "$tmp_appimage" "progress"
 
-  mv "$tmp_appimage" "$APPIMAGE_PATH"
-  chmod +x "$APPIMAGE_PATH"
+  chmod +x "$tmp_appimage"
+
+  info "Extracting AppImage for FUSE-free execution..."
+  (
+    cd "$tmp_dir"
+    "$tmp_appimage" --appimage-extract >/dev/null
+  )
+
+  [ -x "$tmp_dir/squashfs-root/AppRun" ] || error "AppImage extraction did not produce an executable AppRun."
+
+  rm -rf "$APP_DIR" "$APPIMAGE_PATH"
+  mv "$tmp_dir/squashfs-root" "$APP_DIR"
+  chmod +x "$APP_RUN_PATH"
+  write_launcher
   printf '%s\n' "$tag" > "$VERSION_PATH"
 
   if download_file "$ICON_URL" "$ICON_PATH"; then
@@ -305,7 +331,7 @@ main() {
 
   write_desktop_file
   chmod +x "$DESKTOP_FILE"
-  ln -sf "$APPIMAGE_PATH" "$BIN_PATH"
+  ln -sf "$LAUNCHER_PATH" "$BIN_PATH"
 
   if command -v update-desktop-database >/dev/null 2>&1; then
     update-desktop-database "$DESKTOP_DIR" >/dev/null 2>&1 || true
