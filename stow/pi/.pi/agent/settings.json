@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.80.10",
+  "lastChangelogVersion": "0.82.0",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
   "packages": [
@@ -9,7 +9,6 @@
     "npm:pi-intercom",
     "npm:pi-web-access",
     "git:git@github.com:chiroro-jr/pi-zed-terminal-title.git",
-    "npm:@plannotator/pi-extension",
     "npm:@ff-labs/fff-bun"
   ],
   "enabledModels": [
