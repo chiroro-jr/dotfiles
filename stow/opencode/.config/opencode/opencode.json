@@ -25,9 +25,9 @@
     },
     "pencil": {
       "command": [
-        "sh",
-        "-lc",
-        "exec \"$HOME/.pencil/mcp/vscodium/out/mcp-server-linux-x64\" --app vscodium --agent openCodeCLI"
+        "/home/chiroro/.local/share/pencil/resources/app.asar.unpacked/out/mcp-server-linux-x64",
+        "--app",
+        "desktop"
       ],
       "enabled": true,
       "type": "local"
