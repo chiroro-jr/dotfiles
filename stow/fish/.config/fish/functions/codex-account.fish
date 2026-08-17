@@ -7,9 +7,6 @@ function __codex_account_init_vars
     end
 
     set -g __codex_account_codex_auth_file "$__codex_account_codex_home/auth.json"
-    if set -q AUTH_FILE
-        set __codex_account_codex_auth_file "$AUTH_FILE"
-    end
 
     set -g __codex_account_pi_home "$HOME/.pi/agent"
     if set -q PI_CODING_AGENT_DIR
@@ -26,6 +23,8 @@ function __codex_account_init_vars
         set __codex_account_opencode_home "$OPENCODE_DATA"
     end
     set -g __codex_account_opencode_auth_file "$__codex_account_opencode_home/auth.json"
+
+    set -g __codex_account_zed_live 'secret-service:zed'
 
     set -g __codex_account_dir "$__codex_account_codex_home/.codex-account"
     if set -q CODEX_ACCOUNT_DIR
@@ -49,7 +48,7 @@ end
 
 function __codex_account_usage
     printf '%s\n' \
-        "$__codex_account_program - save and switch one ChatGPT login for Pi, Codex, and OpenCode" \
+        "$__codex_account_program - save and switch one ChatGPT login for Pi, Codex, OpenCode, and Zed" \
         '' \
         'Usage:' \
         "  $__codex_account_program help" \
@@ -57,7 +56,7 @@ function __codex_account_usage
         "  $__codex_account_program current" \
         "  $__codex_account_program save [-a|--from AGENT] [-n|--name NAME]" \
         "  $__codex_account_program switch [-n|--name] NAME" \
-        "  $__codex_account_program login [-a|--agent AGENT] [--device] [-n|--name NAME]" \
+        "  $__codex_account_program login [-a|--agent pi|codex] [--device] [-n|--name NAME]" \
         "  $__codex_account_program sync" \
         "  $__codex_account_program refresh [-n|--name NAME]" \
         "  $__codex_account_program usage [-a|--agent AGENT] [-n|--name NAME] [--json]" \
@@ -68,28 +67,28 @@ function __codex_account_usage
         '      List saved accounts. * is the live Pi login.' \
         '' \
         '  current' \
-        '      Show live Pi, Codex, and OpenCode logins, and whether they share one grant.' \
+        '      Show live Pi, Codex, OpenCode, and Zed logins, and whether they share one grant.' \
         '' \
         '  save [-a AGENT] [-n NAME]' \
         '      Snapshot live tokens into the shared store as email.plan (from the token).' \
-        '      Default saves every live tool. -a pi|codex|opencode saves that live file only.' \
+        '      Default saves every live tool. -a pi|codex|opencode|zed saves that live login only.' \
         '' \
         '  switch NAME' \
-        '      Put that saved grant on Pi, Codex, and OpenCode.' \
+        '      Put that saved grant on Pi, Codex, OpenCode, and Zed.' \
         '' \
-        '  login [--device] [-n NAME]' \
-        '      ChatGPT OAuth via Pi, then write the same grant to Codex and OpenCode.' \
+        '  login [-a pi|codex] [--device] [-n NAME]' \
+        '      ChatGPT OAuth via Pi, then write the same grant to Codex, OpenCode, and Zed.' \
         '      Use -a codex only for the official Codex login UI (hides live Codex' \
         '      first so `codex login` cannot revoke a saved account).' \
         '' \
         '  sync' \
-        '      If Pi, Codex, and OpenCode are the same ChatGPT account, copy the newer' \
-        '      tokens (Pi wins ties) to all three tools and the matching save. Refuses' \
-        '      if they are different accounts.' \
+        '      If Pi, Codex, OpenCode, and Zed are the same ChatGPT account, copy the newer' \
+        '      tokens (Pi wins ties) to all four tools and the matching save. Refuses' \
+        '      if they are different accounts. Completes an interrupted refresh first.' \
         '' \
         '  refresh [-n NAME]' \
         '      Rotate tokens with OpenAI. Default is live Pi. Writes back to every' \
-        '      live file on that same account, plus matching saves.' \
+        '      live login on that same account, plus matching saves.' \
         '' \
         '  usage [-n NAME] [--json]' \
         '      Show ChatGPT Codex plan usage for each distinct account.' \
@@ -110,13 +109,15 @@ function __codex_account_usage
         "  $__codex_account_accounts_home/<name>.json" \
         '' \
         'Notes:' \
-        '  - Pi owns login and is the usual source of truth; Codex and OpenCode get converted copies.' \
+        '  - Pi owns login and is the usual source of truth; Codex, OpenCode, and Zed get converted copies.' \
         '  - `codex login` revokes whatever is in ~/.codex/auth.json. Prefer' \
         "    `$__codex_account_program login` instead of raw `codex login`." \
         '  - Do not run `codex logout` if you still want that saved account.' \
         '  - Pi restore only replaces openai-codex; cursor and other providers stay.' \
         '  - OpenCode restore only replaces openai; other OpenCode providers stay.' \
-        '  - Restart Pi/Codex/OpenCode after switching.'
+        '  - Zed restore writes Linux Secret Service item zed-github-account for ChatGPT Codex.' \
+        '  - Codex credential storage must be `file` (the default), not keyring/auto/ephemeral.' \
+        '  - Restart Pi/Codex/OpenCode/Zed after switching.'
 end
 
 function __codex_account_helper_path
@@ -137,7 +138,8 @@ function __codex_account_py_store
         --accounts-home "$__codex_account_accounts_home" \
         --codex-live "$__codex_account_codex_auth_file" \
         --pi-live "$__codex_account_pi_auth_file" \
-        --opencode-live "$__codex_account_opencode_auth_file"
+        --opencode-live "$__codex_account_opencode_auth_file" \
+        --zed-live "$__codex_account_zed_live"
 end
 
 function __codex_account_normalize_agent
@@ -148,8 +150,10 @@ function __codex_account_normalize_agent
             printf 'pi\n'
         case opencode
             printf 'opencode\n'
+        case zed
+            printf 'zed\n'
         case '*'
-            __codex_account_die "Unknown agent '$argv[1]'. Use 'codex', 'pi', or 'opencode'."
+            __codex_account_die "Unknown agent '$argv[1]'. Use 'codex', 'pi', 'opencode', or 'zed'."
             return 1
     end
 end
@@ -166,6 +170,8 @@ function __codex_account_live_auth_file
             printf '%s\n' "$__codex_account_pi_auth_file"
         case opencode
             printf '%s\n' "$__codex_account_opencode_auth_file"
+        case zed
+            printf '%s\n' "$__codex_account_zed_live"
     end
 end
 
@@ -177,6 +183,8 @@ function __codex_account_ensure_dirs
     mkdir -p "$__codex_account_codex_home" "$__codex_account_dir" "$__codex_account_accounts_home"
     chmod 700 "$__codex_account_dir" 2>/dev/null; or true
     chmod 700 "$__codex_account_accounts_home" 2>/dev/null; or true
+    __codex_account_py check-codex-storage "$__codex_account_codex_home"
+    or return 1
     __codex_account_migrate_unscoped_layout
     __codex_account_py migrate-store "$__codex_account_accounts_home"
     or return 1
@@ -305,12 +313,18 @@ function __codex_account_parse_args
     set -g __codex_account_opt_json 0
     set -g __codex_account_opt_all 0
     set -g __codex_account_opt_positionals
+    set -g __codex_account_seen_agent 0
+    set -g __codex_account_seen_name 0
+    set -g __codex_account_seen_device 0
+    set -g __codex_account_seen_json 0
+    set -g __codex_account_seen_all 0
 
     set -l i 1
     while test $i -le (count $argv)
         set -l arg "$argv[$i]"
         switch "$arg"
             case -a --agent --from
+                set __codex_account_seen_agent 1
                 set i (math $i + 1)
                 if test $i -gt (count $argv)
                     __codex_account_die "Missing value for $arg."
@@ -322,6 +336,7 @@ function __codex_account_parse_args
                 end
                 set __codex_account_opt_agent "$normalized"
             case -n --name
+                set __codex_account_seen_name 1
                 set i (math $i + 1)
                 if test $i -gt (count $argv)
                     __codex_account_die "Missing value for $arg."
@@ -329,16 +344,25 @@ function __codex_account_parse_args
                 end
                 set __codex_account_opt_name "$argv[$i]"
             case --codex
+                set __codex_account_seen_agent 1
                 set __codex_account_opt_agent codex
             case --pi --from-pi
+                set __codex_account_seen_agent 1
                 set __codex_account_opt_agent pi
             case --opencode --from-opencode
+                set __codex_account_seen_agent 1
                 set __codex_account_opt_agent opencode
+            case --zed --from-zed
+                set __codex_account_seen_agent 1
+                set __codex_account_opt_agent zed
             case --device --device-auth
+                set __codex_account_seen_device 1
                 set __codex_account_opt_device 1
             case --json
+                set __codex_account_seen_json 1
                 set __codex_account_opt_json 1
             case --all
+                set __codex_account_seen_all 1
                 set __codex_account_opt_all 1
             case -h --help
                 return 2
@@ -355,6 +379,30 @@ function __codex_account_parse_args
                 set -a __codex_account_opt_positionals "$arg"
         end
         set i (math $i + 1)
+    end
+end
+
+function __codex_account_reject_irrelevant_options
+    set -l command "$argv[1]"
+    set -e argv[1]
+    for option in agent name device json all
+        set -l seen 0
+        switch "$option"
+            case agent
+                set seen $__codex_account_seen_agent
+            case name
+                set seen $__codex_account_seen_name
+            case device
+                set seen $__codex_account_seen_device
+            case json
+                set seen $__codex_account_seen_json
+            case all
+                set seen $__codex_account_seen_all
+        end
+        if test $seen -eq 1; and not contains -- "$option" $argv
+            __codex_account_die "Option --$option is not valid for '$command'."
+            return 1
+        end
     end
 end
 
@@ -385,6 +433,7 @@ function __codex_account_command_list
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options list; or return 1
     if test (count $__codex_account_opt_positionals) -gt 0
         __codex_account_die "Usage: $__codex_account_program list"
         return 1
@@ -414,6 +463,7 @@ function __codex_account_command_save
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options save agent name; or return 1
     set -l name (__codex_account_resolved_name)
     if test $pipestatus[1] -ne 0
         return 1
@@ -449,6 +499,7 @@ function __codex_account_command_switch
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options switch name; or return 1
 
     set -l target (__codex_account_resolved_name)
     if test $pipestatus[1] -ne 0
@@ -470,11 +521,12 @@ function __codex_account_command_login
     __codex_account_parse_args $argv
     switch $status
         case 2
-            __codex_account_die "Usage: $__codex_account_program login [-a|--agent AGENT] [--device] [-n|--name NAME]"
+            __codex_account_die "Usage: $__codex_account_program login [-a|--agent pi|codex] [--device] [-n|--name NAME]"
             return 1
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options login agent name device; or return 1
     if test -z "$__codex_account_opt_agent"
         set __codex_account_opt_agent pi
     end
@@ -484,14 +536,22 @@ function __codex_account_command_login
         return 1
     end
 
+    if not contains -- "$agent" pi codex
+        __codex_account_die "Login supports only 'pi' or 'codex'; the resulting grant is copied to every tool."
+        return 1
+    end
+
     __codex_account_ensure_dirs
     or return 1
+    __codex_account_py_store require-no-pending --action login
+    or return 1
 
-    if test "$agent" = pi
-        __codex_account_login_pi "$name"
-        return
+    switch "$agent"
+        case pi
+            __codex_account_login_pi "$name"
+        case codex
+            __codex_account_login_codex "$name"
     end
-    __codex_account_login_codex "$name"
 end
 
 function __codex_account_login_codex
@@ -529,7 +589,7 @@ function __codex_account_login_codex
     end
 
     rm -f (__codex_account_codex_stash_path)
-    __codex_account_py write-both --force --from codex --codex-live "$__codex_account_codex_auth_file" --pi-live "$__codex_account_pi_auth_file" --opencode-live "$__codex_account_opencode_auth_file" >/dev/null
+    __codex_account_py_store write-both --force --from codex >/dev/null
     or return 1
     set -l py_args save-live --from codex
     if test -n "$name"
@@ -540,7 +600,7 @@ function __codex_account_login_codex
     if test -n "$name"
         __codex_account_set_current_account "$name"
     end
-    __codex_account_note 'Wrote the same grant to Pi and OpenCode. Restart Pi/Codex/OpenCode if they are already running.'
+    __codex_account_note 'Wrote the same grant to Pi, OpenCode, and Zed. Restart Pi/Codex/OpenCode/Zed if they are already running.'
 end
 
 function __codex_account_login_pi
@@ -562,7 +622,7 @@ function __codex_account_login_pi
     end
     or return 1
 
-    __codex_account_py write-both --force --from pi --codex-live "$__codex_account_codex_auth_file" --pi-live "$__codex_account_pi_auth_file" --opencode-live "$__codex_account_opencode_auth_file" >/dev/null
+    __codex_account_py_store write-both --force --from pi >/dev/null
     or return 1
     set -l py_args save-live --from pi
     if test -n "$name"
@@ -573,7 +633,7 @@ function __codex_account_login_pi
     if test -n "$name"
         __codex_account_set_current_account "$name"
     end
-    __codex_account_note 'Wrote the same grant to Codex and OpenCode. Restart Pi/Codex/OpenCode if they are already running.'
+    __codex_account_note 'Wrote the same grant to Codex, OpenCode, and Zed. Restart Pi/Codex/OpenCode/Zed if they are already running.'
 end
 
 function __codex_account_command_sync
@@ -595,6 +655,7 @@ function __codex_account_command_refresh
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options refresh name; or return 1
     set -l name (__codex_account_resolved_name)
     if test $pipestatus[1] -ne 0
         return 1
@@ -617,6 +678,7 @@ function __codex_account_command_rm
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options rm name; or return 1
 
     set -l account (__codex_account_resolved_name)
     if test $pipestatus[1] -ne 0
@@ -655,6 +717,7 @@ function __codex_account_command_usage
         case 1
             return 1
     end
+    __codex_account_reject_irrelevant_options usage agent name json all; or return 1
 
     set -l name (__codex_account_resolved_name)
     if test $pipestatus[1] -ne 0
@@ -668,7 +731,7 @@ function __codex_account_command_usage
     __codex_account_ensure_dirs
     or return 1
 
-    set -l py_args usage-report --accounts-home "$__codex_account_accounts_home" --codex-live "$__codex_account_codex_auth_file" --pi-live "$__codex_account_pi_auth_file" --opencode-live "$__codex_account_opencode_auth_file"
+    set -l py_args usage-report --accounts-home "$__codex_account_accounts_home" --codex-live "$__codex_account_codex_auth_file" --pi-live "$__codex_account_pi_auth_file" --opencode-live "$__codex_account_opencode_auth_file" --zed-live "$__codex_account_zed_live"
     if test -n "$__codex_account_opt_agent"
         set -a py_args --agent "$__codex_account_opt_agent"
     end
@@ -684,7 +747,7 @@ function __codex_account_command_usage
     __codex_account_py $py_args
 end
 
-function codex-account --description 'Save and switch one ChatGPT login for Pi, Codex, and OpenCode'
+function codex-account --description 'Save and switch one ChatGPT login for Pi, Codex, OpenCode, and Zed'
     __codex_account_init_vars
 
     if not type -q python3

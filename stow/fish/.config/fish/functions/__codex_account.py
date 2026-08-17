@@ -3,9 +3,11 @@ import hashlib
 import json
 import os
 import secrets
+import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,13 +28,28 @@ PI_OAUTH_SCOPE = "openid profile email offline_access"
 PI_OAUTH_CALLBACK_PORT = 1455
 PI_OAUTH_TIMEOUT_SECONDS = 15 * 60
 
-AGENTS = ("codex", "pi", "opencode")
-LIVE_PRIORITY = ("pi", "opencode", "codex")
+AGENTS = ("codex", "pi", "opencode", "zed")
+LIVE_PRIORITY = ("pi", "opencode", "zed", "codex")
+LIVE_SYNC_RANK = {"recovery": 4, "pi": 3, "opencode": 2, "zed": 1, "codex": 0}
+
+ZED_LIVE_SENTINEL = "secret-service:zed"
+ZED_KEYRING_LABEL = "zed-github-account"
+ZED_CREDENTIALS_URL = "https://chatgpt.com/backend-api/codex"
+ZED_CREDENTIALS_USERNAME = "Bearer"
+SECRET_TOOL_TIMEOUT = 30
+PENDING_REFRESH_FILENAME = ".pending-refresh.json"
 
 
 def die(message: str, code: int = 1) -> None:
     print(f"Error: {message}", file=sys.stderr)
     raise SystemExit(code)
+
+
+def option_value(args: list[str], index: int, option: str) -> tuple[int, str]:
+    index += 1
+    if index >= len(args):
+        die(f"missing value for {option}")
+    return index, args[index]
 
 
 def atomic_write_json(path: Path, data: object) -> None:
@@ -168,21 +185,55 @@ def looks_like_pi(data: dict) -> bool:
     return oauth.get("type") == "oauth" and bool(oauth.get("access") or oauth.get("refresh"))
 
 
+def looks_like_zed(data: dict) -> bool:
+    if looks_like_codex(data) or looks_like_pi(data):
+        return False
+    return bool(data.get("access_token") and data.get("refresh_token"))
+
+
+def is_zed_live(path: Path | None) -> bool:
+    if path is None:
+        return False
+    return path.name == ZED_LIVE_SENTINEL or path.as_posix().endswith(ZED_LIVE_SENTINEL)
+
+
 def identity_from_any(data: dict) -> dict:
+    if looks_like_zed(data):
+        return identity_from_codex(to_codex(data))
     if looks_like_codex(data):
         return identity_from_codex(data)
     return identity_from_pi(data)
 
 
 def identity_from_saved(agent: str, data: dict) -> dict:
-    if looks_like_codex(data):
-        return identity_from_codex(data)
-    if looks_like_pi(data):
-        return identity_from_pi(data)
+    if looks_like_zed(data) or looks_like_codex(data) or looks_like_pi(data):
+        return identity_from_any(data)
     return identity_from_codex(data) if agent == "codex" else identity_from_pi(data)
 
 
 def to_codex(data: dict) -> dict:
+    if looks_like_zed(data):
+        access = str(data.get("access_token") or "")
+        refresh = str(data.get("refresh_token") or "")
+        account_id = str(data.get("account_id") or openai_auth_claims(access).get("chatgpt_account_id") or "")
+        last_refresh = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        expires_at_ms = data.get("expires_at_ms")
+        if isinstance(expires_at_ms, (int, float)) and expires_at_ms > 0:
+            last_refresh = time.strftime(
+                "%Y-%m-%dT%H:%M:%SZ",
+                time.gmtime(max(0, expires_at_ms / 1000 - 864000)),
+            )
+        return {
+            "auth_mode": "chatgpt",
+            "tokens": {
+                "id_token": access,
+                "access_token": access,
+                "refresh_token": refresh,
+                "account_id": account_id,
+            },
+            "last_refresh": last_refresh,
+        }
+
     if looks_like_codex(data):
         tokens = dict(_codex_tokens(data))
         access = str(tokens.get("access_token") or "")
@@ -222,6 +273,8 @@ def to_codex(data: dict) -> dict:
 
 
 def to_pi_oauth(data: dict) -> dict:
+    if looks_like_zed(data):
+        data = to_codex(data)
     if looks_like_codex(data):
         tokens = _codex_tokens(data)
         access = str(tokens.get("access_token") or "")
@@ -246,13 +299,17 @@ def grant_account_id(data: dict) -> str:
 
 
 def grant_refresh(data: dict) -> str:
+    if looks_like_zed(data):
+        return str(data.get("refresh_token") or "")
     if looks_like_codex(data):
         return str(_codex_tokens(data).get("refresh_token") or "")
     return str(pi_oauth_from_data(data).get("refresh") or "")
 
 
 def grant_access_exp(data: dict) -> float:
-    if looks_like_codex(data):
+    if looks_like_zed(data):
+        access = str(data.get("access_token") or "")
+    elif looks_like_codex(data):
         access = str(_codex_tokens(data).get("access_token") or "")
     else:
         access = str(pi_oauth_from_data(data).get("access") or "")
@@ -290,6 +347,91 @@ def write_opencode_live(path: Path, data: dict) -> None:
     os.chmod(path, 0o600)
 
 
+def to_zed(data: dict) -> dict:
+    canonical = to_codex(data)
+    tokens = canonical["tokens"]
+    access = str(tokens.get("access_token") or "")
+    exp = jwt_payload(access).get("exp")
+    if isinstance(exp, (int, float)):
+        expires_at_ms = int(exp * 1000)
+    else:
+        expires_at_ms = int(time.time() * 1000) + 864000 * 1000
+    account_id = str(tokens.get("account_id") or "") or None
+    email = token_email(access)
+    return {
+        "access_token": access,
+        "refresh_token": str(tokens.get("refresh_token") or ""),
+        "expires_at_ms": expires_at_ms,
+        "account_id": account_id,
+        "email": email,
+    }
+
+
+def _secret_tool(*args: str, input_bytes: bytes | None = None) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(
+            ["secret-tool", *args],
+            input=input_bytes,
+            capture_output=True,
+            timeout=SECRET_TOOL_TIMEOUT,
+            check=False,
+        )
+    except FileNotFoundError:
+        raise RuntimeError("secret-tool is not on PATH. Install libsecret to manage Zed ChatGPT credentials.")
+    except subprocess.TimeoutExpired:
+        raise RuntimeError("secret-tool timed out. Unlock the keyring and retry.")
+
+
+def read_zed_credentials() -> dict | None:
+    try:
+        proc = subprocess.run(
+            [
+                "secret-tool",
+                "lookup",
+                "url",
+                ZED_CREDENTIALS_URL,
+                "username",
+                ZED_CREDENTIALS_USERNAME,
+            ],
+            capture_output=True,
+            timeout=SECRET_TOOL_TIMEOUT,
+            check=False,
+        )
+    except FileNotFoundError:
+        return None
+    except subprocess.TimeoutExpired:
+        return None
+    if proc.returncode != 0 or not proc.stdout:
+        return None
+    try:
+        data = json.loads(proc.stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict) or not looks_like_zed(data):
+        return None
+    ident = identity_from_any(data)
+    if ident.get("account_id") and grant_refresh(data):
+        return data
+    return None
+
+
+def write_zed_live(_path: Path | None, data: dict) -> None:
+    blob = json.dumps(to_zed(data), separators=(",", ":")).encode()
+    proc = _secret_tool(
+        "store",
+        "--label",
+        ZED_KEYRING_LABEL,
+        "url",
+        ZED_CREDENTIALS_URL,
+        "username",
+        ZED_CREDENTIALS_USERNAME,
+        input_bytes=blob,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or b"").decode(errors="replace").strip() or "secret-tool store failed"
+        raise RuntimeError(f"failed to write Zed ChatGPT credentials: {detail}")
+
+
 def write_saved_grant(path: Path, data: dict) -> None:
     atomic_write_json(path, to_codex(data))
     os.chmod(path, 0o600)
@@ -300,7 +442,12 @@ def write_all_lives(
     codex_live: Path | None,
     pi_live: Path | None,
     opencode_live: Path | None = None,
+    zed_live: Path | None = None,
 ) -> None:
+    # Secret Service is the most failure-prone destination. Write it before
+    # changing any local files so a locked keyring cannot leave a partial switch.
+    if zed_live is not None:
+        write_zed_live(zed_live, data)
     if codex_live is not None:
         write_codex_live(codex_live, data)
     if pi_live is not None:
@@ -309,15 +456,68 @@ def write_all_lives(
         write_opencode_live(opencode_live, data)
 
 
+def pending_refresh_path(accounts_home: Path) -> Path:
+    return accounts_home.parent / PENDING_REFRESH_FILENAME
+
+
+def write_pending_refresh(accounts_home: Path, data: dict) -> Path:
+    path = pending_refresh_path(accounts_home)
+    write_saved_grant(path, data)
+    return path
+
+
+def load_pending_refresh(accounts_home: Path) -> dict | None:
+    path = pending_refresh_path(accounts_home)
+    data = try_load_json(path) if path.is_file() else None
+    if data is None or not grant_account_id(data) or not grant_refresh(data):
+        return None
+    return data
+
+
+def clear_pending_refresh(accounts_home: Path) -> None:
+    try:
+        pending_refresh_path(accounts_home).unlink()
+    except FileNotFoundError:
+        pass
+
+
+def require_no_pending_refresh(accounts_home: Path, action: str) -> None:
+    path = pending_refresh_path(accounts_home)
+    if path.is_file():
+        die(
+            f"cannot {action} while a refresh recovery grant exists at {path}; "
+            "run 'codex-account sync' first"
+        )
+
+
+def check_codex_storage(codex_home: Path) -> None:
+    config_path = codex_home / "config.toml"
+    if not config_path.is_file():
+        return
+    try:
+        with config_path.open("rb") as handle:
+            config = tomllib.load(handle)
+    except (OSError, tomllib.TOMLDecodeError) as exc:
+        die(f"cannot read Codex credential storage setting from {config_path}: {exc}")
+    mode = config.get("cli_auth_credentials_store", "file")
+    if mode != "file":
+        die(
+            "codex-account requires cli_auth_credentials_store = \"file\" "
+            f"in {config_path}; found {mode!r}."
+        )
+
+
 def write_both_lives(
     data: dict,
     codex_live: Path | None,
     pi_live: Path | None,
     opencode_live: Path | None = None,
+    zed_live: Path | None = None,
     *,
     update_codex: bool = True,
     update_pi: bool = True,
     update_opencode: bool = True,
+    update_zed: bool = True,
 ) -> None:
     if update_codex and codex_live is not None:
         write_codex_live(codex_live, data)
@@ -325,6 +525,8 @@ def write_both_lives(
         write_pi_live(pi_live, data)
     if update_opencode and opencode_live is not None:
         write_opencode_live(opencode_live, data)
+    if update_zed and zed_live is not None:
+        write_zed_live(zed_live, data)
 
 
 def require_chatgpt_codex(data: dict, source: str) -> dict:
@@ -717,6 +919,12 @@ def _codex_tokens(data: dict) -> dict:
 
 
 def _agent_secrets(agent: str, data: dict) -> tuple[str, str, str]:
+    if looks_like_zed(data):
+        return (
+            str(data.get("access_token") or ""),
+            str(data.get("refresh_token") or ""),
+            str(data.get("account_id") or ""),
+        )
     if looks_like_codex(data) or (agent == "codex" and not looks_like_pi(data)):
         tokens = _codex_tokens(data)
         return (
@@ -766,6 +974,9 @@ def _refresh_chatgpt_token(refresh_token: str, as_json: bool) -> dict:
 
 
 def _apply_refreshed_tokens(agent: str, data: dict, refreshed: dict) -> dict:
+    if looks_like_zed(data) or agent == "zed":
+        data = to_codex(data)
+        agent = "codex"
     access = refreshed.get("access_token")
     new_refresh = refreshed.get("refresh_token")
     id_token = refreshed.get("id_token")
@@ -824,12 +1035,22 @@ def _write_agent_file(agent: str, path: Path, data: dict, as_live: bool) -> None
 
 
 def _live_chatgpt_data(path: Path | None) -> dict | None:
-    if path is None or not path.is_file():
+    if path is None:
+        return None
+    if is_zed_live(path):
+        data = read_zed_credentials()
+        if data is None:
+            return None
+        ident = identity_from_any(data)
+        if ident.get("account_id") and grant_refresh(data):
+            return to_codex(data)
+        return None
+    if not path.is_file():
         return None
     data = try_load_json(path)
     if data is None:
         return None
-    if looks_like_codex(data) or looks_like_pi(data):
+    if looks_like_codex(data) or looks_like_pi(data) or looks_like_zed(data):
         ident = identity_from_any(data)
         if ident.get("account_id") and grant_refresh(data):
             return data
@@ -860,11 +1081,30 @@ def _account_heading(name: str, plan: object, email: str = "") -> str:
     return f"{shown}  [{slug}]"
 
 
-def _slot_name(data: dict) -> str | None:
+def _slot_base(data: dict) -> str | None:
     email = _email_name(data)
     if not email:
         return None
     return f"{email}.{_plan_slug(identity_from_any(data).get('plan'))}"
+
+
+def _slot_name(data: dict, accounts_home: Path | None = None) -> str | None:
+    base = _slot_base(data)
+    if not base or accounts_home is None:
+        return base
+    account_id = grant_account_id(data)
+    dest = unified_saved_path(accounts_home, base)
+    existing = try_load_json(dest) if dest.is_file() else None
+    if existing is None or not account_id or grant_account_id(existing) == account_id:
+        return base
+    digest = hashlib.sha256(account_id.encode()).hexdigest()
+    for length in (8, 12, 16, len(digest)):
+        candidate = f"{base}.{digest[:length]}"
+        candidate_path = unified_saved_path(accounts_home, candidate)
+        candidate_data = try_load_json(candidate_path) if candidate_path.is_file() else None
+        if candidate_data is None or grant_account_id(candidate_data) == account_id:
+            return candidate
+    return f"{base}.{digest}"
 
 
 def _resolve_saved_name(accounts_home: Path, name: str) -> str | None:
@@ -886,7 +1126,7 @@ def _preferred_saved_name(accounts_home: Path, data: dict | None) -> str | None:
     if not account_id:
         return None
     email = _email_name(data)
-    wanted = _slot_name(data)
+    wanted = _slot_name(data, accounts_home)
     names = []
     for name, path in iter_saved_unified(accounts_home):
         saved = try_load_json(path)
@@ -951,7 +1191,11 @@ def _rename_saves_to_slot_names(accounts_home: Path) -> None:
         data = try_load_json(path)
         if data is None:
             continue
-        wanted = _slot_name(data)
+        # Only migrate the old email-only default. Explicit/custom names stay put.
+        email = _email_name(data)
+        if not email or name != email:
+            continue
+        wanted = _slot_name(data, accounts_home)
         if not wanted or wanted == name:
             continue
         dest = unified_saved_path(accounts_home, wanted)
@@ -967,7 +1211,7 @@ def snapshot_live_file(path: Path, accounts_home: Path) -> str | None:
     data = _live_chatgpt_data(path)
     if data is None:
         return None
-    name = _slot_name(data)
+    name = _slot_name(data, accounts_home)
     if not name:
         return None
     dest = unified_saved_path(accounts_home, name)
@@ -983,9 +1227,10 @@ def snapshot_lives(
     codex_live: Path,
     pi_live: Path,
     opencode_live: Path | None = None,
+    zed_live: Path | None = None,
 ) -> list[str]:
     saved = []
-    for path in (pi_live, opencode_live, codex_live):
+    for path in (pi_live, opencode_live, zed_live, codex_live):
         if path is None:
             continue
         name = snapshot_live_file(path, accounts_home)
@@ -1008,19 +1253,19 @@ def _live_label(data: dict) -> str:
 def _pick_sync_winner(lives: dict[str, dict | None]) -> tuple[str, dict]:
     present = {name: data for name, data in lives.items() if data is not None}
     if not present:
-        die("No ChatGPT Codex login in Pi, Codex, or OpenCode.")
+        die("No ChatGPT Codex login in Pi, Codex, OpenCode, or Zed.")
     ids = {grant_account_id(data) for data in present.values()}
     if len(ids) > 1:
         parts = [f"{name}={_live_label(data)}" for name, data in present.items()]
         die(
-            "Pi, Codex, and OpenCode are different ChatGPT accounts "
+            "Pi, Codex, OpenCode, and Zed are different ChatGPT accounts "
             f"({', '.join(parts)}). Use switch NAME to put the same login on all tools."
         )
     ranked = sorted(
         present.items(),
         key=lambda item: (
             grant_access_exp(item[1]),
-            2 if item[0] == "pi" else 1 if item[0] == "opencode" else 0,
+            LIVE_SYNC_RANK.get(item[0], 0),
         ),
     )
     return ranked[-1]
@@ -1029,7 +1274,7 @@ def _pick_sync_winner(lives: dict[str, dict | None]) -> tuple[str, dict]:
 def _update_matching_saves(accounts_home: Path, data: dict) -> list[str]:
     account_id = grant_account_id(data)
     updated = []
-    wanted = _slot_name(data)
+    wanted = _slot_name(data, accounts_home)
     if wanted:
         dest = unified_saved_path(accounts_home, wanted)
         write_saved_grant(dest, data)
@@ -1046,10 +1291,19 @@ def _update_matching_saves(accounts_home: Path, data: dict) -> list[str]:
     return updated
 
 
-def _maybe_write_live_if_same_account(path: Path | None, live_data: dict | None, grant: dict, writer) -> bool:
+def _maybe_write_live_if_same_account(
+    path: Path | None,
+    live_data: dict | None,
+    grant: dict,
+    writer,
+    *,
+    fill_missing: bool = False,
+) -> bool:
     if path is None:
         return False
     if live_data is None:
+        if not fill_missing:
+            return False
         writer(path, grant)
         return True
     if _same_account(live_data, grant):
@@ -1064,30 +1318,39 @@ def cmd_write_both(args: list[str]) -> None:
     codex_live = None
     pi_live = None
     opencode_live = None
+    zed_live = None
+    accounts_home = None
     force = False
     i = 0
     while i < len(args):
         arg = args[i]
         if arg == "--from":
-            i += 1
-            source = args[i]
+            i, source = option_value(args, i, arg)
         elif arg == "--file":
-            i += 1
-            source_file = Path(args[i])
+            i, value = option_value(args, i, arg)
+            source_file = Path(value)
         elif arg == "--codex-live":
-            i += 1
-            codex_live = Path(args[i])
+            i, value = option_value(args, i, arg)
+            codex_live = Path(value)
         elif arg == "--pi-live":
-            i += 1
-            pi_live = Path(args[i])
+            i, value = option_value(args, i, arg)
+            pi_live = Path(value)
         elif arg == "--opencode-live":
-            i += 1
-            opencode_live = Path(args[i])
+            i, value = option_value(args, i, arg)
+            opencode_live = Path(value)
+        elif arg == "--zed-live":
+            i, value = option_value(args, i, arg)
+            zed_live = Path(value)
         elif arg == "--force":
             force = True
+        elif arg == "--accounts-home":
+            i, value = option_value(args, i, arg)
+            accounts_home = Path(value)
         else:
             die(f"unknown write-both option: {arg}")
         i += 1
+    if accounts_home is not None:
+        require_no_pending_refresh(accounts_home, "distribute a login")
     if source_file is not None:
         data = load_json(source_file)
     elif source == "pi":
@@ -1102,19 +1365,26 @@ def cmd_write_both(args: list[str]) -> None:
         if opencode_live is None:
             die("write-both --from opencode requires --opencode-live")
         data = load_json(opencode_live)
+    elif source == "zed":
+        if zed_live is None:
+            die("write-both --from zed requires --zed-live")
+        data = _live_chatgpt_data(zed_live)
+        if data is None:
+            die("No ChatGPT Codex login in Zed")
     else:
-        die("write-both --from must be pi, codex, opencode, or used with --file")
+        die("write-both --from must be pi, codex, opencode, zed, or used with --file")
     ident = identity_from_any(data)
     if not ident.get("account_id"):
         die("source has no ChatGPT account id")
     if force or source_file is not None:
-        write_all_lives(data, codex_live, pi_live, opencode_live)
+        write_all_lives(data, codex_live, pi_live, opencode_live, zed_live)
         print_identity(ident)
         return
     writers = {
         "pi": (pi_live, write_pi_live),
         "codex": (codex_live, write_codex_live),
         "opencode": (opencode_live, write_opencode_live),
+        "zed": (zed_live, write_zed_live),
     }
     wrote = False
     for name, (path, writer) in writers.items():
@@ -1123,7 +1393,7 @@ def cmd_write_both(args: list[str]) -> None:
             writer(path, data)
             wrote = True
             continue
-        if _maybe_write_live_if_same_account(path, live_data, data, writer):
+        if _maybe_write_live_if_same_account(path, live_data, data, writer, fill_missing=True):
             wrote = True
     if not wrote:
         die("did not write any live file")
@@ -1137,24 +1407,50 @@ def cmd_sync(args: list[str]) -> None:
         "pi": _live_chatgpt_data(parsed["pi_live"]),
         "codex": _live_chatgpt_data(parsed["codex_live"]),
         "opencode": _live_chatgpt_data(parsed["opencode_live"]),
+        "zed": _live_chatgpt_data(parsed["zed_live"]),
     }
+    pending = load_pending_refresh(accounts_home)
+    if pending is None and pending_refresh_path(accounts_home).is_file():
+        die(
+            f"Cannot read refresh recovery grant at {pending_refresh_path(accounts_home)}; "
+            "repair or remove it before syncing."
+        )
+    if pending is not None:
+        pending_id = grant_account_id(pending)
+        live_ids = {grant_account_id(data) for data in lives.values() if data is not None}
+        if live_ids and pending_id not in live_ids:
+            die(
+                "A pending refresh belongs to a different live account. "
+                f"Recovery grant kept at {pending_refresh_path(accounts_home)}."
+            )
+        lives["recovery"] = pending
     winner_name, winner = _pick_sync_winner(lives)
     present = {name: data for name, data in lives.items() if data is not None}
-    already = bool(present) and len({grant_refresh(data) for data in present.values()}) == 1
-    write_all_lives(winner, parsed["codex_live"], parsed["pi_live"], parsed["opencode_live"])
+    live_present = {name: data for name, data in present.items() if name != "recovery"}
+    already = bool(live_present) and len({grant_refresh(data) for data in live_present.values()}) == 1
+    write_all_lives(
+        winner,
+        parsed["codex_live"],
+        parsed["pi_live"],
+        parsed["opencode_live"],
+        parsed["zed_live"],
+    )
     updated = _update_matching_saves(accounts_home, winner)
+    if pending is not None:
+        clear_pending_refresh(accounts_home)
     ident = identity_from_any(winner)
     label = ident.get("email") or ident.get("account_id")
-    if already and len(present) == 3:
+    if pending is None and already and len(live_present) == 4:
         print(f"Already in sync ({label}).")
         return
     saves = ", ".join(updated) if updated else "none"
-    print(f"Synced from {winner_name} ({label}) to Pi, Codex, and OpenCode. Updated saves: {saves}.")
+    print(f"Synced from {winner_name} ({label}) to Pi, Codex, OpenCode, and Zed. Updated saves: {saves}.")
 
 
 def cmd_refresh(args: list[str]) -> None:
     parsed = _parse_common_paths(args)
     accounts_home = parsed["accounts_home"]
+    require_no_pending_refresh(accounts_home, "refresh another grant")
     codex_live = parsed["codex_live"]
     pi_live = parsed["pi_live"]
     name = parsed.get("name")
@@ -1169,6 +1465,7 @@ def cmd_refresh(args: list[str]) -> None:
     else:
         pi_data = _live_chatgpt_data(pi_live)
         opencode_data = _live_chatgpt_data(parsed["opencode_live"])
+        zed_data = _live_chatgpt_data(parsed["zed_live"])
         codex_data = _live_chatgpt_data(codex_live)
         if pi_data is not None:
             data = pi_data
@@ -1176,11 +1473,14 @@ def cmd_refresh(args: list[str]) -> None:
         elif opencode_data is not None:
             data = opencode_data
             source = "opencode"
+        elif zed_data is not None:
+            data = zed_data
+            source = "zed"
         elif codex_data is not None:
             data = codex_data
             source = "codex"
         else:
-            die("No ChatGPT Codex login in Pi, Codex, or OpenCode.")
+            die("No ChatGPT Codex login in Pi, Codex, OpenCode, or Zed.")
     refresh = grant_refresh(data)
     if not refresh:
         die("selected login has no refresh token")
@@ -1188,36 +1488,47 @@ def cmd_refresh(args: list[str]) -> None:
         refreshed = _refresh_chatgpt_token(refresh, as_json=False)
     except Exception as exc:
         die(str(exc))
+    if looks_like_zed(data):
+        data = to_codex(data)
     if looks_like_codex(data):
         data = _apply_refreshed_tokens("codex", dict(data), refreshed)
     else:
         data = _apply_refreshed_tokens("pi", dict(data), refreshed)
+    recovery_path = write_pending_refresh(accounts_home, data)
     pi_data = _live_chatgpt_data(pi_live)
     codex_data = _live_chatgpt_data(codex_live)
     opencode_data = _live_chatgpt_data(parsed["opencode_live"])
-    wrote_pi = _maybe_write_live_if_same_account(pi_live, pi_data, data, write_pi_live)
-    wrote_codex = _maybe_write_live_if_same_account(codex_live, codex_data, data, write_codex_live)
-    wrote_opencode = _maybe_write_live_if_same_account(
-        parsed["opencode_live"], opencode_data, data, write_opencode_live
-    )
-    if source == "pi":
-        write_pi_live(pi_live, data)
-        wrote_pi = True
-    elif source == "codex":
-        write_codex_live(codex_live, data)
-        wrote_codex = True
-    elif source == "opencode":
-        write_opencode_live(parsed["opencode_live"], data)
-        wrote_opencode = True
-    updated = _update_matching_saves(accounts_home, data)
+    zed_data = _live_chatgpt_data(parsed["zed_live"])
+    live_targets = {
+        "pi": (pi_live, pi_data, write_pi_live),
+        "codex": (codex_live, codex_data, write_codex_live),
+        "opencode": (parsed["opencode_live"], opencode_data, write_opencode_live),
+        "zed": (parsed["zed_live"], zed_data, write_zed_live),
+    }
+    written: list[str] = []
+    failures: list[str] = []
+    try:
+        updated = _update_matching_saves(accounts_home, data)
+    except Exception as exc:
+        updated = []
+        failures.append(f"saved grants: {exc}")
+    for agent, (live_path, live_data, writer) in live_targets.items():
+        if live_data is None or not _same_account(live_data, data):
+            continue
+        try:
+            writer(live_path, data)
+            written.append(agent)
+        except Exception as exc:
+            failures.append(f"{agent}: {exc}")
+    if failures:
+        die(
+            "refresh succeeded but some destinations failed: "
+            f"{'; '.join(failures)}. The fresh grant is safe at {recovery_path}; "
+            "fix the destination and run 'codex-account sync'."
+        )
+    clear_pending_refresh(accounts_home)
     ident = identity_from_any(data)
-    targets = []
-    if wrote_pi:
-        targets.append("pi")
-    if wrote_codex:
-        targets.append("codex")
-    if wrote_opencode:
-        targets.append("opencode")
+    targets = written
     if updated:
         targets.extend(updated)
     print(
@@ -1239,12 +1550,20 @@ def cmd_save_live(args: list[str]) -> None:
         data = _live_chatgpt_data(parsed["opencode_live"])
         if data is None:
             die(f"No ChatGPT Codex login in {parsed['opencode_live']}")
+    elif source == "zed":
+        data = _live_chatgpt_data(parsed["zed_live"])
+        if data is None:
+            die("No ChatGPT Codex login in Zed")
     elif source == "both":
         saved = snapshot_lives(
-            accounts_home, parsed["codex_live"], parsed["pi_live"], parsed["opencode_live"]
+            accounts_home,
+            parsed["codex_live"],
+            parsed["pi_live"],
+            parsed["opencode_live"],
+            parsed["zed_live"],
         )
         if not saved:
-            die("No ChatGPT Codex login in Pi, Codex, or OpenCode.")
+            die("No ChatGPT Codex login in Pi, Codex, OpenCode, or Zed.")
         print("Saved " + ", ".join(saved) + ".")
         return
     else:
@@ -1253,15 +1572,25 @@ def cmd_save_live(args: list[str]) -> None:
             data = _live_chatgpt_data(parsed["opencode_live"])
             source = "opencode"
         if data is None:
+            data = _live_chatgpt_data(parsed["zed_live"])
+            source = "zed"
+        if data is None:
             data = _live_chatgpt_data(parsed["codex_live"])
             source = "codex"
         if data is None:
-            die("No ChatGPT Codex login in Pi, Codex, or OpenCode.")
+            die("No ChatGPT Codex login in Pi, Codex, OpenCode, or Zed.")
     if not name:
-        name = _slot_name(data)
+        name = _slot_name(data, accounts_home)
         if not name:
             die("No email in the token. Pass -n/--name.")
     dest = unified_saved_path(accounts_home, name)
+    existing = try_load_json(dest) if dest.is_file() else None
+    if (
+        existing is not None
+        and grant_account_id(existing)
+        and grant_account_id(existing) != grant_account_id(data)
+    ):
+        die(f"saved account name '{name}' already belongs to a different ChatGPT workspace")
     write_saved_grant(dest, data)
     ident = identity_from_any(data)
     print(f"Saved '{name}' ({ident.get('plan') or 'unknown'} {ident.get('email') or ident.get('account_id')}).")
@@ -1270,6 +1599,7 @@ def cmd_save_live(args: list[str]) -> None:
 def cmd_switch_grant(args: list[str]) -> None:
     parsed = _parse_common_paths(args)
     accounts_home = parsed["accounts_home"]
+    require_no_pending_refresh(accounts_home, "switch accounts")
     name = parsed.get("name")
     if not name:
         die("switch requires a saved account name")
@@ -1278,14 +1608,26 @@ def cmd_switch_grant(args: list[str]) -> None:
         die(f"Unknown account '{name}'. Save it first with 'codex-account save'.")
     name = resolved
     path = unified_saved_path(accounts_home, name)
-    snapshot_lives(accounts_home, parsed["codex_live"], parsed["pi_live"], parsed["opencode_live"])
+    snapshot_lives(
+        accounts_home,
+        parsed["codex_live"],
+        parsed["pi_live"],
+        parsed["opencode_live"],
+        parsed["zed_live"],
+    )
     data = load_json(path)
     ident = identity_from_any(data)
     if not ident.get("account_id") or not grant_refresh(data):
         die(f"saved account '{name}' is not a ChatGPT Codex login")
-    write_all_lives(data, parsed["codex_live"], parsed["pi_live"], parsed["opencode_live"])
-    print(f"Switched Pi, Codex, and OpenCode to '{name}' ({ident.get('plan') or 'unknown'} {ident.get('email') or ident.get('account_id')}).")
-    print("Restart Pi/Codex/OpenCode if they are already running.")
+    write_all_lives(
+        data,
+        parsed["codex_live"],
+        parsed["pi_live"],
+        parsed["opencode_live"],
+        parsed["zed_live"],
+    )
+    print(f"Switched Pi, Codex, OpenCode, and Zed to '{name}' ({ident.get('plan') or 'unknown'} {ident.get('email') or ident.get('account_id')}).")
+    print("Restart Pi/Codex/OpenCode/Zed if they are already running.")
 
 
 def cmd_list_accounts(args: list[str]) -> None:
@@ -1321,11 +1663,14 @@ def cmd_current(args: list[str]) -> None:
         "pi": (_live_chatgpt_data(parsed["pi_live"]), parsed["pi_live"]),
         "codex": (_live_chatgpt_data(parsed["codex_live"]), parsed["codex_live"]),
         "opencode": (_live_chatgpt_data(parsed["opencode_live"]), parsed["opencode_live"]),
+        "zed": (_live_chatgpt_data(parsed["zed_live"]), parsed["zed_live"]),
     }
 
     def describe(label: str, data: dict | None, path: Path) -> None:
         if data is None:
-            if path.is_file():
+            if is_zed_live(path):
+                print(f"{label:<8} no ChatGPT Codex login")
+            elif path.is_file():
                 print(f"{label:<8} no ChatGPT Codex login")
             else:
                 print(f"{label:<8} no auth.json")
@@ -1361,31 +1706,36 @@ def _parse_common_paths(args: list[str]) -> dict:
         "codex_live": None,
         "pi_live": None,
         "opencode_live": None,
+        "zed_live": None,
         "name": None,
         "source": None,
+        "action": None,
         "json": False,
     }
     i = 0
     while i < len(args):
         arg = args[i]
         if arg == "--accounts-home":
-            i += 1
-            out["accounts_home"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            out["accounts_home"] = Path(value)
         elif arg == "--codex-live":
-            i += 1
-            out["codex_live"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            out["codex_live"] = Path(value)
         elif arg == "--pi-live":
-            i += 1
-            out["pi_live"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            out["pi_live"] = Path(value)
         elif arg == "--opencode-live":
-            i += 1
-            out["opencode_live"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            out["opencode_live"] = Path(value)
+        elif arg == "--zed-live":
+            i, value = option_value(args, i, arg)
+            out["zed_live"] = Path(value)
         elif arg == "--name":
-            i += 1
-            out["name"] = args[i]
+            i, out["name"] = option_value(args, i, arg)
         elif arg == "--from":
-            i += 1
-            out["source"] = args[i]
+            i, out["source"] = option_value(args, i, arg)
+        elif arg == "--action":
+            i, out["action"] = option_value(args, i, arg)
         elif arg == "--json":
             out["json"] = True
         else:
@@ -1399,6 +1749,8 @@ def _parse_common_paths(args: list[str]) -> dict:
         die("missing --pi-live")
     if out["opencode_live"] is None:
         die("missing --opencode-live")
+    if out["zed_live"] is None:
+        out["zed_live"] = Path(ZED_LIVE_SENTINEL)
     return out
 
 
@@ -1496,6 +1848,8 @@ def _normalize_usage_payload(payload: dict) -> dict:
 
 
 def _apply_agent(data: dict) -> str:
+    if looks_like_zed(data):
+        return "zed"
     return "codex" if looks_like_codex(data) else "pi"
 
 
@@ -1511,6 +1865,9 @@ def _ensure_fresh_tokens(agent: str, data: dict) -> tuple[dict, bool]:
 
 
 def _persist_grant(path: Path, data: dict, live_paths: dict[str, Path]) -> None:
+    if is_zed_live(path):
+        write_zed_live(path, data)
+        return
     resolved = path.resolve()
     pi_live = live_paths.get("pi")
     codex_live = live_paths.get("codex")
@@ -1527,6 +1884,23 @@ def _persist_grant(path: Path, data: dict, live_paths: dict[str, Path]) -> None:
     write_saved_grant(path, data)
 
 
+def _persist_usage_refresh(
+    path: Path,
+    data: dict,
+    live_paths: dict[str, Path],
+    accounts_home: Path | None,
+    account_id: str,
+) -> None:
+    if accounts_home:
+        write_pending_refresh(accounts_home, data)
+    _persist_grant(path, data, live_paths)
+    if accounts_home:
+        _sync_related_token_copies(
+            path, data, live_paths, accounts_home, account_id or grant_account_id(data)
+        )
+        clear_pending_refresh(accounts_home)
+
+
 def _fetch_usage_for_file(
     agent: str,
     path: Path,
@@ -1535,7 +1909,10 @@ def _fetch_usage_for_file(
     accounts_home: Path | None,
 ) -> dict:
     result = {"ok": False, "agent": agent, "name": name, "path": str(path)}
-    data = try_load_json(path)
+    if is_zed_live(path):
+        data = _live_chatgpt_data(path)
+    else:
+        data = try_load_json(path)
     if data is None:
         result["error"] = f"cannot read {path}"
         return result
@@ -1550,11 +1927,9 @@ def _fetch_usage_for_file(
         data, refreshed = _ensure_fresh_tokens(agent, data)
         result["refreshed"] = refreshed
         if refreshed:
-            _persist_grant(path, data, live_paths)
-            if accounts_home:
-                _sync_related_token_copies(
-                    path, data, live_paths, accounts_home, result["account_id"]
-                )
+            _persist_usage_refresh(
+                path, data, live_paths, accounts_home, result["account_id"]
+            )
     except Exception as exc:
         result["error"] = f"refresh failed: {exc}"
         return result
@@ -1569,11 +1944,9 @@ def _fetch_usage_for_file(
             refreshed = _refresh_chatgpt_token(refresh, as_json=False)
             data = _apply_refreshed_tokens(apply_agent, data, refreshed)
             result["refreshed"] = True
-            _persist_grant(path, data, live_paths)
-            if accounts_home:
-                _sync_related_token_copies(
-                    path, data, live_paths, accounts_home, result["account_id"]
-                )
+            _persist_usage_refresh(
+                path, data, live_paths, accounts_home, result["account_id"]
+            )
             access, _refresh, account_id = _agent_secrets(apply_agent, data)
             status, payload = _get_wham_usage(access, account_id or result["account_id"])
         except Exception as exc:
@@ -1607,11 +1980,20 @@ def _sync_related_token_copies(
 ) -> None:
     if not account_id:
         return
-    source_resolved = source_path.resolve()
+    source_resolved = None if is_zed_live(source_path) else source_path.resolve()
     for agent, live_path in live_paths.items():
-        if live_path is None or not live_path.is_file():
+        if live_path is None:
             continue
-        if live_path.resolve() == source_resolved:
+        if is_zed_live(live_path):
+            if is_zed_live(source_path):
+                continue
+            live = _live_chatgpt_data(live_path)
+            if live and grant_account_id(live) == account_id:
+                write_zed_live(live_path, data)
+            continue
+        if not live_path.is_file():
+            continue
+        if source_resolved is not None and live_path.resolve() == source_resolved:
             continue
         live = try_load_json(live_path)
         if live and grant_account_id(live) == account_id:
@@ -1619,6 +2001,8 @@ def _sync_related_token_copies(
                 write_pi_live(live_path, data)
             elif agent == "opencode":
                 write_opencode_live(live_path, data)
+            elif agent == "zed":
+                write_zed_live(live_path, data)
             else:
                 write_codex_live(live_path, data)
     _update_matching_saves(accounts_home, data)
@@ -1671,7 +2055,10 @@ def _print_usage_human(rows: list[dict]) -> None:
 
 
 def _source_identity(agent: str, path: Path, name: str, is_live: bool) -> dict | None:
-    data = try_load_json(path)
+    if is_zed_live(path):
+        data = _live_chatgpt_data(path)
+    else:
+        data = try_load_json(path)
     if data is None:
         return None
     ident = identity_from_saved(agent, data)
@@ -1692,12 +2079,12 @@ def _source_identity(agent: str, path: Path, name: str, is_live: bool) -> dict |
 def _usage_group_key(source: dict) -> tuple[str, str]:
     email = source.get("email") or ""
     name = source.get("name") or ""
+    if source.get("account_id"):
+        return ("id", source["account_id"])
     if email:
         return ("email", email)
     if name and name != "live":
         return ("name", name)
-    if source.get("account_id"):
-        return ("id", source["account_id"])
     return ("path", f"{source['agent']}:{source['path']}")
 
 
@@ -1741,11 +2128,14 @@ def _collect_usage_targets(
     agents = (agent_filter,) if agent_filter else AGENTS
     for agent in agents:
         live = live_paths.get(agent)
-        if live and live.is_file():
+        if live is None:
+            continue
+        if is_zed_live(live) or live.is_file():
             live_source = _source_identity(agent, live, "live", is_live=True)
             if live_source is not None:
                 sources.append(live_source)
-                seen_paths.add(str(live.resolve()))
+                if not is_zed_live(live):
+                    seen_paths.add(str(live.resolve()))
     for saved_name, path in iter_saved_unified(accounts_home):
         resolved = str(path.resolve())
         if resolved in seen_paths:
@@ -1802,35 +2192,35 @@ def usage_report(args: list[str]) -> None:
         elif arg == "--all":
             want_all = True
         elif arg == "--agent":
-            i += 1
-            if i >= len(args):
-                die("missing value for --agent")
-            agent = args[i]
+            i, agent = option_value(args, i, arg)
             if agent not in AGENTS:
-                die(f"Unknown agent '{agent}'. Use 'codex', 'pi', or 'opencode'.")
+                die(f"Unknown agent '{agent}'. Use 'codex', 'pi', 'opencode', or 'zed'.")
         elif arg == "--name":
-            i += 1
-            if i >= len(args):
-                die("missing value for --name")
-            name = args[i]
+            i, name = option_value(args, i, arg)
         elif arg == "--accounts-home":
-            i += 1
-            accounts_home = Path(args[i])
+            i, value = option_value(args, i, arg)
+            accounts_home = Path(value)
         elif arg == "--codex-live":
-            i += 1
-            live_paths["codex"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            live_paths["codex"] = Path(value)
         elif arg == "--pi-live":
-            i += 1
-            live_paths["pi"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            live_paths["pi"] = Path(value)
         elif arg == "--opencode-live":
-            i += 1
-            live_paths["opencode"] = Path(args[i])
+            i, value = option_value(args, i, arg)
+            live_paths["opencode"] = Path(value)
+        elif arg == "--zed-live":
+            i, value = option_value(args, i, arg)
+            live_paths["zed"] = Path(value)
         else:
             die(f"unknown usage-report option: {arg}")
         i += 1
 
     if accounts_home is None:
         die("usage-report requires --accounts-home")
+    require_no_pending_refresh(accounts_home, "query usage")
+    if "zed" not in live_paths:
+        live_paths["zed"] = Path(ZED_LIVE_SENTINEL)
     if name and want_all:
         die("use either --all or --name, not both")
     if name:
@@ -1968,6 +2358,19 @@ def main(argv: list[str]) -> None:
         migrate_store(Path(args[0]))
         return
 
+    if command == "check-codex-storage":
+        if len(args) != 1:
+            die("check-codex-storage requires the Codex home path")
+        check_codex_storage(Path(args[0]))
+        return
+
+    if command == "require-no-pending":
+        parsed = _parse_common_paths(args)
+        require_no_pending_refresh(
+            parsed["accounts_home"], parsed.get("action") or "continue"
+        )
+        return
+
     if command == "write-both":
         cmd_write_both(args)
         return
@@ -2010,7 +2413,11 @@ def main(argv: list[str]) -> None:
     if command == "snapshot-lives":
         parsed = _parse_common_paths(args)
         saved = snapshot_lives(
-            parsed["accounts_home"], parsed["codex_live"], parsed["pi_live"], parsed["opencode_live"]
+            parsed["accounts_home"],
+            parsed["codex_live"],
+            parsed["pi_live"],
+            parsed["opencode_live"],
+            parsed["zed_live"],
         )
         if saved:
             print("Updated saved tokens for " + ", ".join(saved) + ".")
