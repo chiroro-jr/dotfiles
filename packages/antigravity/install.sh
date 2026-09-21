@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-RELEASES_URL="https://antigravity.google/releases"
+RELEASES_API_URL="https://antigravity-hub-auto-updater-974169037036.us-central1.run.app/releases"
+DOWNLOAD_BASE_URL="https://storage.googleapis.com/antigravity-public/antigravity-hub"
 DOWNLOAD_URL="${DOWNLOAD_URL:-}"
 ICON_URL="https://antigravity.google/assets/image/antigravity-logo.png"
 INSTALL_DIR="$HOME/.local/share/antigravity"
@@ -15,6 +16,7 @@ DESKTOP_DIR="$HOME/.local/share/applications"
 DESKTOP_FILE="$DESKTOP_DIR/antigravity.desktop"
 ICON_DIR="$HOME/.local/share/icons/hicolor/512x512/apps"
 ICON_PATH="$ICON_DIR/antigravity.png"
+PLATFORM="linux-x64"
 
 info() {
   echo "[INFO] $*" >&2
@@ -36,31 +38,36 @@ download_file() {
   curl -fL --compressed --progress-bar --retry 3 --retry-delay 2 "$url" -o "$out"
 }
 
+latest_release_id() {
+  python3 - "$RELEASES_API_URL" <<'PY'
+import json
+import sys
+import urllib.request
+
+api_url = sys.argv[1]
+with urllib.request.urlopen(api_url, timeout=30) as response:
+    releases = json.load(response)
+
+if not isinstance(releases, list) or not releases:
+    print("No Antigravity releases returned by the updater API.", file=sys.stderr)
+    sys.exit(1)
+
+release = releases[0]
+version = str(release.get("version", "")).strip()
+execution_id = str(release.get("execution_id", "")).strip().rstrip("/")
+if not version or not execution_id:
+    print("Updater API release is missing version or execution_id.", file=sys.stderr)
+    sys.exit(1)
+
+print(f"{version}-{execution_id}")
+PY
+}
+
 latest_download_url() {
-  local html js_refs js_ref js_url js url
+  local release_id
 
-  html="$(curl -fsSL --compressed "$RELEASES_URL")"
-  js_refs="$(printf '%s' "$html" | grep -oE '(src|href)="[^"]+\.js"' | sed -E 's/^(src|href)="//; s/"$//')"
-
-  while IFS= read -r js_ref; do
-    [ -n "$js_ref" ] || continue
-    case "$js_ref" in
-      http*) js_url="$js_ref" ;;
-      /*) js_url="https://antigravity.google$js_ref" ;;
-      *) js_url="https://antigravity.google/$js_ref" ;;
-    esac
-
-    js="$(curl -fsSL --compressed "$js_url" || true)"
-    url="$(printf '%s' "$js" | grep -oE 'antigravity-hub/[0-9][^"` ]+/linux-x64/Antigravity\.tar\.gz' | head -n 1 || true)"
-    if [ -n "$url" ]; then
-      printf 'https://storage.googleapis.com/antigravity-public/%s\n' "$url"
-      return 0
-    fi
-  done <<EOF
-$js_refs
-EOF
-
-  return 1
+  release_id="$(latest_release_id)" || return 1
+  printf '%s/%s/%s/Antigravity.tar.gz\n' "$DOWNLOAD_BASE_URL" "$release_id" "$PLATFORM"
 }
 
 resolve_download_url() {
@@ -69,11 +76,11 @@ resolve_download_url() {
     return 0
   fi
 
-  latest_download_url || error "Could not find latest Linux x64 Antigravity download URL on: $RELEASES_URL"
+  latest_download_url || error "Could not resolve latest Antigravity download URL from: $RELEASES_API_URL"
 }
 
 version_from_url() {
-  printf '%s' "$1" | sed -n 's#.*/antigravity-hub/\([^/]*\)/linux-x64/.*#\1#p'
+  printf '%s' "$1" | sed -n 's#.*/antigravity-hub/\([^/]*\)/linux-[^/]*/.*#\1#p'
 }
 
 running_antigravity_pids() {
@@ -156,7 +163,7 @@ usage() {
 Usage: ./install-antigravity.sh
 
 Installs latest Google Antigravity from:
-  $RELEASES_URL
+  $RELEASES_API_URL
 
 Set DOWNLOAD_URL to install a specific tarball.
 EOF
@@ -175,12 +182,12 @@ install_antigravity() {
   esac
 
   require_command curl
-  require_command grep
+  require_command python3
   require_command sed
   require_command tar
 
   if [ "$(uname -m)" != "x86_64" ]; then
-    error "This direct Antigravity link is only for linux-x64. Current architecture: $(uname -m)"
+    error "This installer currently supports linux-x64 only. Current architecture: $(uname -m)"
   fi
 
   DOWNLOAD_URL="$(resolve_download_url)"

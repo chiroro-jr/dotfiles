@@ -1,5 +1,14 @@
 #!/bin/sh
+# Worktrunk Installer Script
+# Installs/updates worktrunk globally via mise
 
-set -eu
+set -e
 
-yay -S --noconfirm --needed worktrunk
+# Check if mise is installed
+if ! command -v mise >/dev/null 2>&1; then
+    echo "Mise not installed. Run ./install-mise.sh first."
+    exit 1
+fi
+
+# 'mise use' both installs the version and sets it in the global config
+mise use -g worktrunk@latest

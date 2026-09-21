@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+set -u
+
+runtime_dir="${XDG_RUNTIME_DIR:-/tmp}"
+state_file="$runtime_dir/handy-recording-indicator"
+lock_file="$runtime_dir/handy-recording-indicator.lock"
+
+exec 9>"$lock_file"
+flock -n 9 || exit 0
+
+if ! pgrep -x handy >/dev/null; then
+  rm -f "$state_file"
+  notify-send \
+    --app-name="Handy" \
+    --category="handy-status" \
+    --urgency=critical \
+    --expire-time=5000 \
+    "Handy is not running" \
+    "Open Handy, then try dictation again."
+  exit 1
+fi
+
+if [[ -f "$state_file" ]]; then
+  handy --toggle-transcription
+
+  notification_id="$(<"$state_file")"
+  rm -f "$state_file"
+  makoctl dismiss --no-history -n "$notification_id" 2>/dev/null || true
+
+  notify-send \
+    --app-name="Handy" \
+    --category="handy-status" \
+    --icon="audio-input-microphone-symbolic" \
+    --expire-time=2500 \
+    "Handy is transcribing"
+else
+  handy --toggle-transcription
+
+  notification_id="$(notify-send \
+    --print-id \
+    --app-name="Handy" \
+    --category="handy-recording" \
+    --icon="audio-input-microphone-symbolic" \
+    --urgency=critical \
+    --expire-time=0 \
+    "Handy is recording")"
+
+  printf '%s\n' "$notification_id" >"$state_file"
+fi

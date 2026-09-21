@@ -54,7 +54,7 @@ download_release_metadata() {
       -H "Accept: application/vnd.github+json"
       -H "X-GitHub-Api-Version: 2022-11-28"
     )
-    [ -z "${GITHUB_TOKEN:-}" ] || headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+    [ -z "${GITHUB_RELEASES_TOKEN:-}" ] || headers+=(-H "Authorization: Bearer $GITHUB_RELEASES_TOKEN")
     curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$RELEASE_API_URL" -o "$out"
     return
   fi

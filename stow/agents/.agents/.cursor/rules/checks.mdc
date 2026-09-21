@@ -1,0 +1,12 @@
+---
+description: Focused lint, typecheck, format, and unit tests while implementing; full checks and build at the end
+alwaysApply: true
+---
+
+# Checks
+
+While implementing, run the project's lint, typecheck, format, and unit-test scripts against the files you changed. Pass path or filter arguments when those scripts support them. Do not lint, typecheck, format, or unit-test the entire project after each change.
+
+If a script cannot be scoped to the changed files, skip that whole-project run until the final pass.
+
+When implementation is complete, run the full check suite and the project build once for confirmation.

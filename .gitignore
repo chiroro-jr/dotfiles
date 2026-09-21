@@ -9,15 +9,27 @@
 
 # Patch and backup artifacts
 *.bak
+*.bak.*
 *.orig
 *.rej
 *.tmp
+
+# Generated deslop reports
+.deslop/
 
 # Local credentials and generated agent state
 stow/fish/.config/fish/conf.d/secrets.fish
 stow/opencode/.config/opencode/antigravity-accounts.json
 stow/pi/.pi/agent/auth.json
 stow/pi/.pi/agent/sessions/
+
+# Self-hosted runner state must never live in this repository
+runners/.runner
+runners/.credentials*
+runners/.path
+runners/.env
+runners/_diag/
+runners/_work/
 
 # OS files
 .DS_Store

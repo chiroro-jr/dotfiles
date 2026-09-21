@@ -1,0 +1,23 @@
+---
+description: When to add, change, or remove tests
+alwaysApply: true
+---
+
+# Tests
+
+Before adding, changing, or removing tests, give a short justification:
+
+- Identify the concrete failure and its user-visible or API consequence.
+- Explain why existing tests do not catch it.
+- Rank proposed tests by value: reproduced bugs first, then specific regression risks or consequential public contracts.
+- For removals, explain why protection is obsolete, redundant, or misplaced.
+
+Drop candidates without a concrete failure and consequence. No new test is an acceptable outcome. Do not invent requirements to justify tests.
+
+Prefer the smallest public-behavior test that catches the failure. For bug fixes, demonstrate failure before the fix when practical.
+
+Do not add tests solely for coverage, cosmetic details, implementation structure, or the presence/absence of something just edited. Avoid broad snapshots and tests of dependency internals.
+
+Use deterministic inputs and controlled time/network where needed. Match the existing runner and layout. New test files are allowed; new runners or test infrastructure require separate justification.
+
+Follow the justified plan. Revise it before making additional test changes.

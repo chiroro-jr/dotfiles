@@ -80,7 +80,7 @@ download_github_api_file() {
       -H "Accept: application/vnd.github+json"
       -H "X-GitHub-Api-Version: 2022-11-28"
     )
-    [ -z "${GITHUB_TOKEN:-}" ] || headers+=(-H "Authorization: Bearer $GITHUB_TOKEN")
+    [ -z "${GITHUB_RELEASES_TOKEN:-}" ] || headers+=(-H "Authorization: Bearer $GITHUB_RELEASES_TOKEN")
     curl -fsSL --retry 3 --retry-delay 2 "${headers[@]}" "$url" -o "$out"
     return
   fi
@@ -90,7 +90,7 @@ download_github_api_file() {
       --header="Accept: application/vnd.github+json"
       --header="X-GitHub-Api-Version: 2022-11-28"
     )
-    [ -z "${GITHUB_TOKEN:-}" ] || headers+=(--header="Authorization: Bearer $GITHUB_TOKEN")
+    [ -z "${GITHUB_RELEASES_TOKEN:-}" ] || headers+=(--header="Authorization: Bearer $GITHUB_RELEASES_TOKEN")
     wget -qO "$out" "${headers[@]}" "$url"
     return
   fi

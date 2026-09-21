@@ -1,11 +1,14 @@
 #!/bin/sh
+# Maven Installer Script
+# Installs/updates Maven globally via mise
 
 set -e
 
+# Check if mise is installed
 if ! command -v mise >/dev/null 2>&1; then
     echo "Mise not installed. Run ./install-mise.sh first."
     exit 1
 fi
 
-# Install Maven at the version declared in the Stow-managed global mise config.
-mise install maven
+# 'mise use' both installs the version and sets it in the global config
+mise use -g maven@latest

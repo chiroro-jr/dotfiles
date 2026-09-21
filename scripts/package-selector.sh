@@ -152,15 +152,46 @@ if "$DRY_RUN"; then
   exit 0
 fi
 
-read -r -p "Proceed? [y/N] " confirmation
-if [[ ! "$confirmation" =~ ^[Yy]([Ee][Ss])?$ ]]; then
-  echo "[INFO] Cancelled."
-  exit 0
-fi
+read -r -p "Proceed? [Y/n] " confirmation
+case "$confirmation" in
+  ""|[Yy]|[Yy][Ee][Ss]) ;;
+  *)
+    echo "[INFO] Cancelled."
+    exit 0
+    ;;
+esac
+
+succeeded=()
+failed=()
 
 for package_name in "${selected[@]}"; do
   echo "[INFO] ${ACTION^}ing $package_name..."
-  "$ROOT/packages/$package_name/$ACTION.sh"
+
+  if "$ROOT/packages/$package_name/$ACTION.sh"; then
+    succeeded+=("$package_name")
+  else
+    status=$?
+
+    if [ "$status" -eq 130 ]; then
+      echo "[ERROR] ${ACTION^} interrupted while processing $package_name." >&2
+      exit 130
+    fi
+
+    echo "[WARN] Failed to ${ACTION} $package_name (exit status: $status). Continuing..." >&2
+    failed+=("$package_name (exit $status)")
+  fi
 done
 
-echo "[INFO] Selected packages processed successfully."
+if [ "${#failed[@]}" -eq 0 ]; then
+  echo "[INFO] Selected packages processed successfully."
+  exit 0
+fi
+
+echo "[ERROR] ${#failed[@]} of ${#selected[@]} selected packages failed to ${ACTION}:" >&2
+printf '  - %s\n' "${failed[@]}" >&2
+
+if [ "${#succeeded[@]}" -gt 0 ]; then
+  echo "[INFO] Successfully processed ${#succeeded[@]} of ${#selected[@]} selected packages."
+fi
+
+exit 1

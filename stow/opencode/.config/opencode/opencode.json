@@ -25,9 +25,11 @@
     },
     "pencil": {
       "command": [
-        "/home/chiroro/.local/share/pencil/resources/app.asar.unpacked/out/mcp-server-linux-x64",
+        "/home/chiroro/.local/share/pen/resources/app.asar.unpacked/out/mcp-server-linux-x64",
         "--app",
-        "desktop"
+        "desktop",
+        "--agent",
+        "openCodeCLI"
       ],
       "enabled": true,
       "type": "local"

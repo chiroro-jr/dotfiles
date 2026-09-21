@@ -1,5 +1,5 @@
 {
-  "lastChangelogVersion": "0.82.0",
+  "lastChangelogVersion": "0.85.1",
   "defaultProvider": "openai-codex",
   "defaultModel": "gpt-5.6-sol",
   "packages": [
@@ -9,26 +9,23 @@
     "npm:pi-intercom",
     "npm:pi-web-access",
     "git:git@github.com:chiroro-jr/pi-zed-terminal-title.git",
-    "npm:@ff-labs/fff-bun"
+    "npm:@ff-labs/fff-bun",
+    "npm:@juicesharp/rpiv-ask-user-question"
   ],
   "enabledModels": [
-    "openai-codex/gpt-5.5",
-    "opencode-go/glm-5.2",
-    "opencode-go/kimi-k2.7-code",
-    "opencode-go/kimi-k2.6",
-    "openai-codex/gpt-5.4-mini",
     "openai-codex/gpt-5.6-luna",
     "openai-codex/gpt-5.6-sol",
-    "openai-codex/gpt-5.6-terra"
+    "openai-codex/gpt-5.6-terra",
+    "openai-codex/gpt-5.3-codex-spark"
   ],
   "terminalThreadTitleModel": "openai-codex/gpt-5.4-mini",
-  "defaultThinkingLevel": "medium",
+  "defaultThinkingLevel": "high",
   "theme": "dark",
   "subagents": {
     "agentOverrides": {
       "scout": {
         "model": "openai-codex/gpt-5.6-luna",
-        "thinking": "low"
+        "thinking": "medium"
       },
       "researcher": {
         "model": "openai-codex/gpt-5.6-luna",
@@ -46,11 +43,11 @@
           "intercom"
         ],
         "skills": [
-          "btca-local",
+          "sourcerer",
           "find-docs"
         ],
         "completionGuard": false,
-        "systemPrompt": "You are a research subagent. Your job is to answer documentation and library-behavior questions using a source-first workflow, then produce a concise research brief.\n\nLookup priority:\n1. If the task includes a GitHub repo, a direct repository link, or you can confidently identify the upstream repo, use btca-local first. Clone or update the repo in ~/.btca/agent/sandbox and inspect the source, docs, examples, tests, changelog, and relevant files directly.\n2. If local repo/source inspection is insufficient, use find-docs via Context7 to retrieve current official docs and API references.\n3. Use web_search/fetch_content/get_search_content only as a final fallback when repo source and Context7 are insufficient or unavailable.\n\nWorking rules:\n- Prefer primary sources over summaries.\n- When using btca-local, cite the repo URL and relevant file paths.\n- When using find-docs, cite the library ID and the doc topic you queried.\n- When using web search, prefer official docs/specs/maintainer sources and say clearly that web fallback was used.\n- If repo source and docs disagree, call that out explicitly.\n- Do not jump to general web search if the question can be answered from repo source or current docs.\n- If a direct GitHub repo link is provided, always use it first.\n- If the necessary web-search tools are unavailable, continue with btca-local and find-docs instead of failing.\n\nOutput format (research.md):\n# Research: [topic]\n\n## Summary\n2-3 sentence direct answer.\n\n## Method\n- Primary path used: repo source, Context7 docs, or web fallback\n- Sources consulted\n\n## Findings\n1. **Finding** — explanation with citation\n2. **Finding** — explanation with citation\n\n## Sources\n- Kept: source and why it mattered\n- Dropped: source and why it was excluded\n\n## Gaps\nWhat could not be answered confidently. Suggested next steps."
+        "systemPrompt": "You are a research subagent. Answer documentation and library-behavior questions, then write a concise research brief.\n\nLookup priority:\n1. Read and follow the sourcerer skill. Resolve the repo, inspect local source in ~/.sourcerer/repos, and cite with sourcerer's permalink rules.\n2. If source inspection is insufficient, use the find-docs skill (Context7) for current official docs and API references.\n3. Use web_search/fetch_content/get_search_content only when sourcerer and find-docs are insufficient or unavailable.\n\nWorking rules:\n- When using find-docs, cite the library ID and the doc topic you queried.\n- When using web search, prefer official docs/specs/maintainer sources and say clearly that web fallback was used.\n- If web-search tools are unavailable, continue with sourcerer and find-docs instead of failing.\n\nOutput format (research.md):\n# Research: [topic]\n\n## Summary\n2-3 sentence direct answer.\n\n## Method\n- Primary path used: sourcerer source, Context7 docs, or web fallback\n- Sources consulted\n\n## Findings\n1. **Finding** — explanation with citation\n2. **Finding** — explanation with citation\n\n## Sources\n- Kept: source and why it mattered\n- Dropped: source and why it was excluded\n\n## Gaps\nWhat could not be answered confidently. Suggested next steps."
       },
       "planner": {
         "model": "openai-codex/gpt-5.6-sol",
@@ -58,11 +55,11 @@
       },
       "worker": {
         "model": "openai-codex/gpt-5.6-sol",
-        "thinking": "low"
+        "thinking": "high"
       },
       "reviewer": {
         "model": "openai-codex/gpt-5.6-sol",
-        "thinking": "medium"
+        "thinking": "high"
       },
       "context-builder": {
         "disabled": true

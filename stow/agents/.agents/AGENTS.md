@@ -1,19 +1,28 @@
 # Global agent instructions
-
+- When asking a user a question, use a provided ask user or questionaire tool if it is available.
 - When reporting information to me, be extremely concise and sacrifice grammar for the sake of concision
 - Do not start subagents unless the user has explicitly requested it
 
 ## Critical workflow
 
+- For every coding task, read and apply the global `code-quality` skill at `/home/chiroro/.agents/skills/code-quality/SKILL.md` before working on code.
 - Prefer project-native tooling over ad-hoc commands.
 - Before running JS/TS commands, detect the package manager from lockfiles (`pnpm-lock.yaml`, `package-lock.json`, `yarn.lock`, `bun.lockb`, `bun.lock`) and use that manager consistently.
 - Prefer `package.json` scripts when they exist (for example use `check-types` instead of raw `tsc --noEmit`), unless the script is clearly unsuitable for the requested task.
 
+## Checks
+
+While implementing, run the project's lint, typecheck, format, and unit-test scripts against the files you changed. Pass path or filter arguments when those scripts support them. Do not lint, typecheck, format, or unit-test the entire project after each change.
+
+If a script cannot be scoped to the changed files, skip that whole-project run until the final pass.
+
+When implementation is complete, run the full check suite and the project build once for confirmation.
+
 ## Library/repo research lookup order
 
-- For source-code questions about libraries, frameworks, packages, or GitHub repos, use **sourcerer** first: local/cloned repo source, tests, examples, git history, PRs/issues, and source-backed citations.
-- Use **librarian** for web/current/context research: articles, external discussions, release context, videos, or ecosystem information that source alone cannot answer.
-- Use **find-docs** as the ctx7 reference fallback: when no usable source repo exists, source is insufficient, or official API docs are the clearest reference.
+- For source-code questions about libraries, frameworks, packages, or GitHub repos, use then **sourcerer** skill first: local/cloned repo source, tests, examples, git history, PRs/issues, and source-backed citations.
+- Use your web access tools for web/current/context research: articles, external discussions, release context, videos, or ecosystem information that source alone cannot answer.
+- Use the **find-docs** skill as the ctx7 reference fallback: when no usable source repo exists, source is insufficient, or official API docs are the clearest reference.
 
 
 ## Tests
@@ -36,9 +45,11 @@ Follow the justified plan. Revise it before making additional test changes.
 
 ## Validation and browser testing
 
-- After implementation, run relevant validation using existing project scripts where possible (for example: typecheck, lint, tests, browser verification).
-- For browser testing/automation, use **chrome-devtools-cli + chrome-devtools skill**.
+- After the full confirmation checks, run browser verification when the change is user-visible.
+- For browser testing/automation, use then **chrome-devtools skill**.
+- For mobile device testing, use the **agent-device skill**.
 - Before any browser test run, check whether a dev server already exists by:
+  - checking if there are any dev servers running for the current app using using the **hitch skill**
   - checking environment files for configured ports (`.env`, `.env.local`, `.env.example`), and
   - confirming with the user if server status is unclear.
 - Never start an additional dev server when one may already be running; ask the user for permission or clarification instead.

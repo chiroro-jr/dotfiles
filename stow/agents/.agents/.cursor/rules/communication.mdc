@@ -1,0 +1,10 @@
+---
+description: Global communication and agent-control preferences
+alwaysApply: true
+---
+
+# Communication
+
+- When asking a user a question, use a provided ask-user or questionnaire tool if it is available.
+- When reporting information, be extremely concise and sacrifice grammar for concision.
+- Do not start subagents unless the user has explicitly requested it.

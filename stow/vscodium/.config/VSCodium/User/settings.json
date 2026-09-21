@@ -1,5 +1,5 @@
 {
-  "workbench.colorTheme": "Tokyo Night",
+  "workbench.colorTheme": "Gruvbox Dark Medium",
   "editor.copyWithSyntaxHighlighting": false,
   "diffEditor.ignoreTrimWhitespace": false,
   "editor.emptySelectionClipboard": false,
@@ -129,5 +129,5 @@
 
   "dart.previewFlutterUiGuides": true,
   "dart.closingLabels": true,
-  "workbench.iconTheme": "flow-deep",
+  "workbench.iconTheme": "vscode-icons",
 }

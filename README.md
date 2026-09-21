@@ -7,12 +7,12 @@ One repository for this machine's user configuration and provisioning scripts.
 ```text
 stow/                  GNU Stow source packages for home-directory configuration
 packages/<name>/       Per-package install.sh and optional uninstall.sh
+runners/               GitHub Actions self-hosted runner install/uninstall
 scripts/bootstrap.sh   Curated workstation setup sequence
 scripts/verify.sh      Static verification; never runs installers
 scripts/config/        Dotfile, Hyprland, and editor configuration tasks
 scripts/system/        System maintenance tasks
 config/                Configuration assets used by scripts
-services/              User systemd units
 ```
 
 ## Setup
@@ -54,6 +54,8 @@ Apply all Stow-managed configuration:
 
 Stow links the selected application configs into `$HOME` without folding whole
 runtime directories such as `~/.pi` or `~/.config/opencode` into the repository.
+Agent skills are the exception: Codex skips `SKILL.md` file symlinks, so the
+installer folds each Stow-managed skill directory into a directory symlink.
 VS Code and VSCodium extension manifests live beside their package installers;
 the installers restore the latest available version of each listed extension.
 
@@ -80,8 +82,10 @@ names can be overridden with `OP_SHELL_SECRETS_ITEM` and
 `OP_PROJECT_SECRETS_DOCUMENT`.
 
 Create a 1Password item named `Workstation Shell Secrets` with password fields
-named `OPENCODE_API_KEY`, `NEURALWATT_API_KEY`, and `GITHUB_TOKEN`, then generate
-the ignored local Fish file:
+named `OPENCODE_API_KEY`, `NEURALWATT_API_KEY`, and
+`GITHUB_RELEASES_TOKEN`, then generate the ignored local Fish file.
+`GITHUB_RELEASES_TOKEN` is used only by package installers; GitHub CLI uses its
+own keyring credentials:
 
 ```bash
 ./scripts/config/restore-shell-secrets.sh
@@ -103,26 +107,20 @@ timestamped backup before extraction:
 
 Android signing keys should also have a second encrypted offline backup.
 
-## Rclone Google Drive photo backup
+## Self-hosted GitHub Actions runners
 
-Install rclone:
+Install and register a runner (token comes from GitHub → Settings → Actions → Runners):
 
 ```bash
-./packages/rclone/install.sh
+./runners/install.sh --url https://github.com/OWNER/REPO --token AAAA
 ```
 
-Configure the `gdrive` remote once:
+By default this installs into `~/.local/share/actions-runner` and enables a systemd service so the runner comes online after reboot. Use `--no-service` to skip that.
+
+Remove it with:
 
 ```bash
-rclone config
-```
-
-Enable the nightly timer:
-
-```bash
-mkdir -p ~/.config/systemd/user
-ln -sf "$PWD/services/rclone-photos-backup.service" ~/.config/systemd/user/
-ln -sf "$PWD/services/rclone-photos-backup.timer" ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now rclone-photos-backup.timer
+./runners/uninstall.sh --token AAAA
+# or locally only:
+./runners/uninstall.sh --local
 ```

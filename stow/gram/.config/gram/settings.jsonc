@@ -2,7 +2,7 @@
   "enable_language_server": true,
   "base_keymap": "VSCode",
   "icon_theme": "Warm Charmed Icons",
-  "theme": "Aura Dark",
+  "theme": "Melange Dark",
   "theme_overrides": {
     "Aura Dark": {
       "editor.document_highlight.read_background": "#00000000",

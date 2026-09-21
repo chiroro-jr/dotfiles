@@ -16,7 +16,6 @@ STOW_PACKAGES=(
   vscodium
   worktrunk
   zed
-  zennotes
 )
 
 command -v stow >/dev/null 2>&1 || {
@@ -39,13 +38,14 @@ backup_conflicts() {
       continue
     fi
 
-    if [ -L "$target" ]; then
-      source_real="$(readlink -f -- "$source" || true)"
-      target_real="$(readlink -f -- "$target" || true)"
-      if [ -n "$source_real" ] && [ "$source_real" = "$target_real" ]; then
-        continue
-      fi
-    elif [ -d "$target" ]; then
+    source_real="$(readlink -f -- "$source" || true)"
+    target_real="$(readlink -f -- "$target" || true)"
+    # Also matches files reached through a folded directory symlink.
+    if [ -n "$source_real" ] && [ "$source_real" = "$target_real" ]; then
+      continue
+    fi
+
+    if [ -d "$target" ] && [ ! -L "$target" ]; then
       echo "[ERROR] Refusing to replace directory with managed file: $target" >&2
       exit 1
     fi
@@ -56,6 +56,84 @@ backup_conflicts() {
     backed_up=true
     echo "[INFO] Backed up $target"
   done < <(find "$STOW_DIR/$package" \( -type f -o -type l \) -print0)
+}
+
+# Codex follows skill-directory symlinks but skips SKILL.md file symlinks
+# created by `stow --no-folding`. Fold each managed skill into a directory
+# symlink unless the destination has extra local files.
+skill_dir_is_stow_tree() {
+  local src="$1"
+  local dest="$2"
+  local path rel target expected
+
+  while IFS= read -r -d '' path; do
+    rel="${path#"$dest/"}"
+    if [ ! -L "$path" ]; then
+      return 1
+    fi
+    target="$(readlink -f -- "$path" || true)"
+    expected="$(readlink -f -- "$src/$rel" || true)"
+    if [ -z "$target" ] || [ "$target" != "$expected" ]; then
+      return 1
+    fi
+  done < <(find "$dest" \( -type f -o -type l \) -print0)
+
+  return 0
+}
+
+fold_agent_skill_directories() {
+  local src_skills="$STOW_DIR/agents/.agents/skills"
+  local dest_skills="$HOME/.agents/skills"
+  local skill dest name
+
+  [ -d "$src_skills" ] || return 0
+  mkdir -p "$dest_skills"
+
+  for skill in "$src_skills"/*; do
+    [ -d "$skill" ] || continue
+    name="$(basename -- "$skill")"
+    dest="$dest_skills/$name"
+    skill="$(readlink -f -- "$skill")"
+
+    if [ -L "$dest" ]; then
+      ln -sfn --relative "$skill" "$dest"
+      continue
+    fi
+
+    if [ -e "$dest" ]; then
+      if ! skill_dir_is_stow_tree "$skill" "$dest"; then
+        echo "[INFO] Leaving mixed skill directory in place: $dest"
+        continue
+      fi
+      rm -rf -- "$dest"
+    fi
+
+    ln -sfn --relative "$skill" "$dest"
+    echo "[INFO] Folded skill directory $dest"
+  done
+}
+
+# Remove previous directory-symlink folds so `stow --no-folding` can
+# recreate file trees without treating those links as foreign targets.
+unfold_agent_skill_directories() {
+  local src_skills="$STOW_DIR/agents/.agents/skills"
+  local dest_skills="$HOME/.agents/skills"
+  local skill dest name target expected
+
+  [ -d "$src_skills" ] || return 0
+  [ -d "$dest_skills" ] || return 0
+
+  for skill in "$src_skills"/*; do
+    [ -d "$skill" ] || continue
+    name="$(basename -- "$skill")"
+    dest="$dest_skills/$name"
+    [ -L "$dest" ] || continue
+    target="$(readlink -f -- "$dest" || true)"
+    expected="$(readlink -f -- "$skill" || true)"
+    if [ -n "$target" ] && [ "$target" = "$expected" ]; then
+      rm -- "$dest"
+    fi
+  done
 }
 
 for package in "${STOW_PACKAGES[@]}"; do
@@ -72,10 +150,32 @@ fi
 
 for package in "${STOW_PACKAGES[@]}"; do
   echo "[INFO] Stowing $package"
-  stow --dir "$STOW_DIR" --target "$HOME" --no-folding --restow "$package"
+  if [ "$package" = agents ]; then
+    mkdir -p "$HOME/.agents/skills"
+    if [ -L "$HOME/.agents" ] || [ -L "$HOME/.agents/skills" ]; then
+      echo "[ERROR] ~/.agents and ~/.agents/skills must be real directories so local skills can sit beside Stow-managed ones." >&2
+      exit 1
+    fi
+    # File-level SKILL.md links from --no-folding are invisible to Codex.
+    # Unfold previous directory links, restow the file tree, then fold
+    # each skill into a relative directory symlink.
+    unfold_agent_skill_directories
+    stow --dir "$STOW_DIR" --target "$HOME" --no-folding --restow "$package"
+    fold_agent_skill_directories
+  else
+    stow --dir "$STOW_DIR" --target "$HOME" --no-folding --restow "$package"
+  fi
 done
 
 # Pi loads global instructions from ~/.pi/agent/AGENTS.md and discovers
 # ~/.agents/skills directly, so only the instruction file needs a bridge.
 mkdir -p "$HOME/.pi/agent"
 ln -sfn "$HOME/.agents/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
+
+# Cursor loads user rule files from ~/.cursor/rules, not ~/.agents.
+mkdir -p "$HOME/.cursor/rules"
+shopt -s nullglob
+for rule in "$HOME/.agents/.cursor/rules"/*.mdc; do
+  ln -sfn "$rule" "$HOME/.cursor/rules/$(basename -- "$rule")"
+done
+shopt -u nullglob

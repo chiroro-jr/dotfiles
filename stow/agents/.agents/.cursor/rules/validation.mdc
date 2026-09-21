@@ -1,0 +1,15 @@
+---
+description: Post-implementation validation, browser, and device testing
+alwaysApply: true
+---
+
+# Validation and browser testing
+
+- After the full confirmation checks, run browser verification when the change is user-visible.
+- For browser testing/automation, use Cursor's built-in browser tools first (navigate, click, type, scroll, screenshot, console, network). If those tools are missing or fail, fall back to the **chrome-devtools** skill.
+- For mobile device testing, use the **agent-device** skill.
+- Before any browser test run, check whether a dev server already exists by:
+  - checking if there are any dev servers running for the current app using the **hitch** skill
+  - checking environment files for configured ports (`.env`, `.env.local`, `.env.example`), and
+  - confirming with the user if server status is unclear.
+- Never start an additional dev server when one may already be running; ask the user for permission or clarification instead.

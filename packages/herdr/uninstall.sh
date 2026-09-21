@@ -1,50 +1,15 @@
-#!/usr/bin/env bash
+#!/bin/sh
+# Herdr Uninstaller Script
+# Removes Herdr from the global mise config and uninstalls it
 
-set -euo pipefail
+set -e
 
-INSTALL_ROOT="$HOME/.local/share/herdr"
-BIN_PATH="$HOME/.local/bin/herdr"
+# Check if mise is installed
+if ! command -v mise >/dev/null 2>&1; then
+    echo "Mise not installed. Run ./install-mise.sh first."
+    exit 1
+fi
 
-info() {
-  echo "[INFO] $*"
-}
-
-usage() {
-  cat <<'EOF'
-Usage: ./packages/herdr/uninstall.sh
-
-Removes Herdr installed by packages/herdr/install.sh.
-EOF
-}
-
-remove_path() {
-  local path="$1"
-
-  if [ -e "$path" ] || [ -L "$path" ]; then
-    rm -rf "$path"
-    info "Removed: $path"
-  fi
-}
-
-main() {
-  case "${1:-}" in
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    "") ;;
-    *)
-      echo "[ERROR] Unknown option: $1" >&2
-      exit 1
-      ;;
-  esac
-
-  info "Uninstalling Herdr..."
-
-  remove_path "$BIN_PATH"
-  remove_path "$INSTALL_ROOT"
-
-  info "Herdr uninstalled."
-}
-
-main "$@"
+# Remove Herdr from the global config and uninstall it
+mise unuse -g herdr@latest
+mise uninstall herdr@latest
