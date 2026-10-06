@@ -172,6 +172,30 @@ done
 mkdir -p "$HOME/.pi/agent"
 ln -sfn "$HOME/.agents/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
 
+# OpenCode loads global instructions from ~/.config/opencode/AGENTS.md.
+mkdir -p "$HOME/.config/opencode"
+ln -sfn "$HOME/.agents/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
+
+# Claude Code reads AGENTS.md per project only; global instructions must
+# live at ~/.claude/CLAUDE.md.
+mkdir -p "$HOME/.claude"
+ln -sfn "$HOME/.agents/AGENTS.md" "$HOME/.claude/CLAUDE.md"
+
+# Claude Code discovers skills only in ~/.claude/skills. Link each global
+# skill there, leaving existing entries (including reserved `synced`) alone.
+mkdir -p "$HOME/.claude/skills"
+for skill in "$HOME/.agents/skills"/*/; do
+  name="$(basename -- "$skill")"
+  dest="$HOME/.claude/skills/$name"
+  [ -f "$skill/SKILL.md" ] || continue
+  [ "$name" != synced ] || continue
+  if [ -e "$dest" ] || [ -L "$dest" ]; then
+    continue
+  fi
+  ln -s "$HOME/.agents/skills/$name" "$dest"
+  echo "[INFO] Linked Claude skill $dest"
+done
+
 # Cursor loads user rule files from ~/.cursor/rules, not ~/.agents.
 mkdir -p "$HOME/.cursor/rules"
 shopt -s nullglob
