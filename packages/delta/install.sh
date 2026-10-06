@@ -22,7 +22,7 @@ FALLBACK_ICON_DIR="$HICOLOR_DIR/scalable/apps"
 FALLBACK_ICON_PATH="$FALLBACK_ICON_DIR/${ICON_NAME}.svg"
 
 info() {
-  echo "[INFO] $*"
+  echo "[INFO] $*" >&2
 }
 
 warn() {
