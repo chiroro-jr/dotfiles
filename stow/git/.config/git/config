@@ -36,6 +36,6 @@
 	helper =
 	helper = !/usr/bin/gh auth git-credential
 [core]
-	editor = zed --wait
+	editor = zeditor --wait
 [fetch]
 	prune = true
