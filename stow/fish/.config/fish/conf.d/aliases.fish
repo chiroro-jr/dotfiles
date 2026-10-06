@@ -37,9 +37,8 @@ alias r='rails'
 alias codex='codex --yolo'
 # mise provides cursor-agent; keep the shorter `agent` command.
 alias agent='cursor-agent --yolo'
-# extra/zed ships `zeditor`; extra/t3code-bin ships `t3code`.
+# extra/zed ships `zeditor`.
 alias zed='zeditor'
-alias t3-code='t3code'
 alias art='php artisan'
 
 function n
