@@ -3,16 +3,25 @@
   "permission": "allow",
   "agent": {
     "build": {
-      "model": "github-copilot/gpt-5.4"
+      "model": "openai/gpt-6-sol",
+       "reasoningEffort": "high",
     },
     "plan": {
-      "model": "github-copilot/gpt-5.4"
+      "model": "openai/gpt-6-astra",
+       "reasoningEffort": "high",
     },
     "general": {
-      "model": "github-copilot/gpt-5.3-codex"
+      "model": "openai/gpt-6-sol",
+       "reasoningEffort": "high",
     },
     "explore": {
-      "model": "firepass/accounts/fireworks/routers/kimi-k2p6-turbo"
+      "model": "openai/gpt-6-luna-fast",
+      "reasoningEffort": "high",
+    },
+    "scout": {
+      "model": "openai/gpt-6-luna-fast",
+      "reasoningEffort": "high",
+      "mode": "all"
     }
   },
   "mcp": {
@@ -33,9 +42,10 @@
       ],
       "enabled": true,
       "type": "local"
+    },
+    "wonder": {
+      "type": "remote",
+      "url": "https://mcp.wonder.so/mcp"
     }
-  },
-  "plugin": [
-    "@plannotator/opencode@latest"
-  ]
+  }
 }
