@@ -10,15 +10,10 @@ INSTALLERS=(
   "packages/stow/install.sh"
   "scripts/config/install-dotfiles.sh"
 
-  # Mise must be present before tool installers run.
+  # Mise installs every tool in its global config.
   "packages/mise/install.sh"
-  "packages/nodejs/install.sh"
-  "packages/pnpm/install.sh"
-  "packages/bun/install.sh"
-  "packages/codex/install.sh"
 
   # System tools and applications.
-  "packages/worktrunk/install.sh"
   "packages/fish/install.sh"
   "packages/hitch/install.sh"
   "packages/mariadb-clients/install.sh"
@@ -27,14 +22,12 @@ INSTALLERS=(
   "packages/zed/install.sh"
   "packages/gram/install.sh"
   "packages/android-studio/install.sh"
-  "packages/direnv/install.sh"
   "packages/google-chrome/install.sh"
   "packages/zen-browser/install.sh"
   "packages/t3-code/install.sh"
   "packages/pen/install.sh"
   "packages/fff-mcp/install.sh"
   "packages/claude/install.sh"
-  "packages/uv/install.sh"
 
   # Final system integration and cleanup.
   "scripts/config/install-hyprland-overrides.sh"

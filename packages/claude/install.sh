@@ -27,7 +27,7 @@ warn() {
 
 # Check if mise is installed
 if ! command -v mise >/dev/null 2>&1; then
-    echo "Mise not installed. Run ./install-mise.sh first."
+    echo "Mise not installed. Run packages/mise/install.sh first."
     exit 1
 fi
 command -v jq >/dev/null 2>&1 || {

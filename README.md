@@ -86,8 +86,8 @@ names can be overridden with `OP_SHELL_SECRETS_ITEM` and
 `OP_PROJECT_SECRETS_DOCUMENT`.
 
 Create a 1Password item named `Workstation Shell Secrets` with password fields
-named `OPENCODE_API_KEY`, `NEURALWATT_API_KEY`, and
-`GITHUB_RELEASES_TOKEN`, then generate the ignored local Fish file.
+named `OPENCODE_API_KEY`, `NEURALWATT_API_KEY`, `CLOUDFLARE_TUNNEL_TOKEN`,
+and `GITHUB_RELEASES_TOKEN`, then generate the ignored local Fish file.
 `GITHUB_RELEASES_TOKEN` is used only by package installers; GitHub CLI uses its
 own keyring credentials:
 
