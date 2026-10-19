@@ -75,14 +75,13 @@ check_bootstrap_sequence() {
   check_bootstrap_order "packages/mise/install.sh" "packages/nodejs/install.sh"
   check_bootstrap_order "packages/mise/install.sh" "packages/pnpm/install.sh"
   check_bootstrap_order "packages/mise/install.sh" "packages/bun/install.sh"
+  check_bootstrap_order "packages/mise/install.sh" "packages/claude/install.sh"
+  check_bootstrap_order "packages/pen/install.sh" "packages/claude/install.sh"
+  check_bootstrap_order "packages/fff-mcp/install.sh" "packages/claude/install.sh"
   check_bootstrap_order "packages/mise/install.sh" "packages/codex/install.sh"
-  check_bootstrap_order "packages/mise/install.sh" "packages/opencode/install.sh"
-  check_bootstrap_order "packages/mise/install.sh" "packages/pi-coding-agent/install.sh"
   check_bootstrap_order "packages/mise/install.sh" "packages/direnv/install.sh"
   check_bootstrap_order "packages/mise/install.sh" "packages/uv/install.sh"
   check_bootstrap_order "packages/mise/install.sh" "packages/worktrunk/install.sh"
-  check_bootstrap_order "packages/pi-coding-agent/install.sh" "packages/codex-account/install.sh"
-  check_bootstrap_order "packages/codex-account/install.sh" "packages/worktrunk/install.sh"
   check_bootstrap_order "packages/fish/install.sh" "scripts/system/change-shell.sh"
   check_bootstrap_order "packages/hitch/install.sh" "scripts/system/change-shell.sh"
   check_bootstrap_order "scripts/config/install-dotfiles.sh" "scripts/config/install-hyprland-overrides.sh"
@@ -114,7 +113,7 @@ check_layout() {
 
   local stow_package
   for stow_package in \
-    agents fish git gram mise opencode pi vscode vscodium worktrunk zed; do
+    agents fish git gram mise vscode vscodium worktrunk zed; do
     if [ ! -d "$ROOT/stow/$stow_package" ]; then
       fail "Missing Stow package: stow/$stow_package"
     fi

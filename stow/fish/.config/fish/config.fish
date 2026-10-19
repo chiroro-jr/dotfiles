@@ -17,5 +17,5 @@ end
 # pnpm end
 
 
-# Added by Antigravity CLI installer
+# User-local binaries
 set -gx PATH "/home/chiroro/.local/bin" $PATH

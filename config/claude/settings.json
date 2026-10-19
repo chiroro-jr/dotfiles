@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__pencil"
+    ],
+    "defaultMode": "auto"
+  },
+  "model": "opus",
+  "enabledPlugins": {
+    "wonder@wonder": true,
+    "resend@claude-plugins-official": true
+  },
+  "extraKnownMarketplaces": {
+    "wonder": {
+      "source": {
+        "source": "github",
+        "repo": "aquila-lab/wonder-plugins"
+      }
+    }
+  },
+  "modelSettings": {
+    "claude-opus-5-5": {
+      "effortLevel": "medium"
+    }
+  },
+  "theme": "dark",
+  "preferredNotifChannel": "terminal_bell"
+}

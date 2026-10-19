@@ -16,9 +16,6 @@ INSTALLERS=(
   "packages/pnpm/install.sh"
   "packages/bun/install.sh"
   "packages/codex/install.sh"
-  "packages/opencode/install.sh"
-  "packages/pi-coding-agent/install.sh"
-  "packages/codex-account/install.sh"
 
   # System tools and applications.
   "packages/worktrunk/install.sh"
@@ -27,7 +24,6 @@ INSTALLERS=(
   "packages/mariadb-clients/install.sh"
   "packages/vscode/install.sh"
   "packages/vscodium/install.sh"
-  "packages/antigravity/install.sh"
   "packages/zed/install.sh"
   "packages/gram/install.sh"
   "packages/android-studio/install.sh"
@@ -36,6 +32,8 @@ INSTALLERS=(
   "packages/zen-browser/install.sh"
   "packages/t3-code/install.sh"
   "packages/pen/install.sh"
+  "packages/fff-mcp/install.sh"
+  "packages/claude/install.sh"
   "packages/uv/install.sh"
 
   # Final system integration and cleanup.

@@ -53,11 +53,15 @@ Apply all Stow-managed configuration:
 ```
 
 Stow links the selected application configs into `$HOME` without folding whole
-runtime directories such as `~/.pi` or `~/.config/opencode` into the repository.
+runtime directories such as `~/.config/zed` into the repository.
 Agent skills are the exception: Codex skips `SKILL.md` file symlinks, so the
 installer folds each Stow-managed skill directory into a directory symlink.
 VS Code and VSCodium extension manifests live beside their package installers;
 the installers restore the latest available version of each listed extension.
+Claude Code settings in `config/claude/settings.json` are merged into
+`~/.claude/settings.json` by `packages/claude/install.sh`, which also installs
+the listed plugins and registers the fff and Pencil MCP servers. Keys not in
+the shared file, such as `autoMode`, stay local to the machine.
 
 ## Safe verification
 

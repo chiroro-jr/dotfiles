@@ -30,12 +30,6 @@ if command -v claude >/dev/null 2>&1; then
     echo ""
 fi
 
-# OpenCode
-if command -v opencode >/dev/null 2>&1; then
-    echo "[OpenCode] Remove the 'fff' entry from ~/.config/opencode/opencode.json"
-    echo ""
-fi
-
 # Codex
 if command -v codex >/dev/null 2>&1; then
     echo "[Codex] Run: codex mcp remove fff"

@@ -10,8 +10,6 @@ STOW_PACKAGES=(
   git
   gram
   mise
-  opencode
-  pi
   vscode
   vscodium
   worktrunk
@@ -167,15 +165,6 @@ for package in "${STOW_PACKAGES[@]}"; do
   fi
 done
 
-# Pi loads global instructions from ~/.pi/agent/AGENTS.md and discovers
-# ~/.agents/skills directly, so only the instruction file needs a bridge.
-mkdir -p "$HOME/.pi/agent"
-ln -sfn "$HOME/.agents/AGENTS.md" "$HOME/.pi/agent/AGENTS.md"
-
-# OpenCode loads global instructions from ~/.config/opencode/AGENTS.md.
-mkdir -p "$HOME/.config/opencode"
-ln -sfn "$HOME/.agents/AGENTS.md" "$HOME/.config/opencode/AGENTS.md"
-
 # Claude Code reads AGENTS.md per project only; global instructions must
 # live at ~/.claude/CLAUDE.md.
 mkdir -p "$HOME/.claude"
@@ -195,11 +184,3 @@ for skill in "$HOME/.agents/skills"/*/; do
   ln -s "$HOME/.agents/skills/$name" "$dest"
   echo "[INFO] Linked Claude skill $dest"
 done
-
-# Cursor loads user rule files from ~/.cursor/rules, not ~/.agents.
-mkdir -p "$HOME/.cursor/rules"
-shopt -s nullglob
-for rule in "$HOME/.agents/.cursor/rules"/*.mdc; do
-  ln -sfn "$rule" "$HOME/.cursor/rules/$(basename -- "$rule")"
-done
-shopt -u nullglob

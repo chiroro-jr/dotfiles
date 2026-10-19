@@ -201,9 +201,4 @@
     },
     "openai_compatible": {},
   },
-  "agent_servers": {
-    "pi-acp": {
-      "type": "registry",
-    },
-  },
 }
