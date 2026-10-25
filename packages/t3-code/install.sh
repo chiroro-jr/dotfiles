@@ -36,14 +36,16 @@ error() {
 
 usage() {
   cat <<'EOF'
-Usage: ./install.sh [--nightly]
+Usage: ./install.sh [--nightly | --stable]
 
-Installs the latest T3 Code AppImage from GitHub Releases.
+Installs the latest T3 Code nightly AppImage from GitHub Releases by default.
 
 Options:
-  --nightly   Install the latest nightly build instead of the latest stable release.
-              Replaces any installed stable build (and vice versa).
+  --nightly   Install the latest nightly build (default).
+  --stable    Install the latest stable release instead.
   -h, --help  Show this help message.
+
+Installing either channel replaces the other.
 EOF
 }
 
@@ -214,12 +216,15 @@ main() {
   local release_channel tmp_dir metadata_path tmp_appimage tag appimage_url asset_name current_version
   local -a release_data
 
-  release_channel="stable"
+  release_channel="nightly"
 
   while [ "$#" -gt 0 ]; do
     case "$1" in
       --nightly)
         release_channel="nightly"
+        ;;
+      --stable)
+        release_channel="stable"
         ;;
       -h|--help)
         usage
