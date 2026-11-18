@@ -1,7 +1,13 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="${SOURCERER_REPOS:-$HOME/.sourcerer/repos}"
+if [[ -n "${SOURCERER_REPOS:-}" ]]; then
+  ROOT="$SOURCERER_REPOS"
+elif [[ "$OSTYPE" == darwin* ]]; then
+  ROOT="${TMPDIR%/}/sourcerer"
+else
+  ROOT=/var/tmp/sourcerer
+fi
 MODE="pull"
 DRY_RUN=0
 
@@ -12,7 +18,7 @@ Usage: update-repos.sh [--root PATH] [--fetch-only] [--pull] [--dry-run]
 Safely update Sourcerer cached repositories.
 
 Default behavior:
-  - find git repos under ~/.sourcerer/repos
+  - find git repos under the cache root (/var/tmp/sourcerer, $TMPDIR/sourcerer on macOS)
   - skip dirty worktrees
   - fetch all remotes, tags, and prune deleted refs
   - pull --ff-only only when on a branch with an upstream
@@ -78,7 +84,7 @@ seen=0
 
 while IFS= read -r -d '' gitdir; do
   repo="${gitdir%/.git}"
-  rel="${repo#$ROOT/}"
+  rel="${repo#"$ROOT"/}"
   seen=$((seen + 1))
   echo "==> $rel"
 

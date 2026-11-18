@@ -14,7 +14,7 @@
 
 ## Research
 
-- Library/framework/repo source questions → `sourcerer` skill (it falls back to `find-docs`). Web search for articles, discussions, release context.
+- Library/framework/repo questions → `sourcerer` skill. Web search for articles, discussions, release context.
 
 ## Verification
 
