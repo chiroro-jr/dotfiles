@@ -33,7 +33,10 @@ A test earns its place by catching a named failure that existing tests miss.
 - Before adding one, name that failure. If you can't, add no test.
 - Prefer one regression test that fails before the fix and passes after.
 - Assert observable behavior through the smallest public boundary, with expected values from the requirement, not copied from the implementation.
-- Leave out tests for coverage numbers, trivial forwarding, dependency internals, and broad snapshots.
+- Leave out tests that depend on nothing (framework or browser behavior, a mock of the unit under test, what the types already guarantee) or on the implementation (private state, call order, which helper ran), and tests for coverage numbers or broad snapshots.
+- Removing a feature removes its tests. Its absence needs no test: bringing it back would be a decision, not a regression.
+- Done includes deleting or rewriting the tests your change made obsolete.
+- A flaky test is a bug: reproduce it by running it many times, then fix the cause. Retries, sleeps, and longer timeouts hide it.
 - To show the test catches the bug, run it before applying the fix, or in a copy of the repo. Uncommitted work in the tree is the user's: leave the working tree to your own edits, with no `stash`, `reset`, or `checkout` of files.
 
 ## Verify
