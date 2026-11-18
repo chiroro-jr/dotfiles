@@ -1,6 +1,6 @@
 # Global agent instructions
 
-- Search files/content with fff tools.
+- Search files/content with fff tools; if fff is unavailable, use `rg`.
 - Ask questions via the ask-user tool when available.
 - Report tersely; grammar optional.
 - No subagents unless I explicitly ask.
@@ -11,6 +11,12 @@
 - Load `~/.agents/skills/code-quality/SKILL.md` before any coding task (covers tests + verification).
 - JS/TS: use the lockfile's package manager; prefer `package.json` scripts over raw tools.
 - While iterating: run lint/typecheck/format/tests scoped to changed files; skip checks that can't be scoped. When done: full checks + build once.
+- Merge a PR only once its CI checks pass on the latest commit; never merge a PR right after opening it.
+- CI slow or tests piling up → suggest `/speed-up-ci` or `/prune-tests --report`; don't run them unasked.
+
+## Agent docs
+
+- Writing or editing a skill, `AGENTS.md` or `CLAUDE.md` → `writing-for-agents`. Use `skill-creator` only to run evals or benchmark a skill.
 
 ## Research
 
