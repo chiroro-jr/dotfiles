@@ -18,8 +18,10 @@ From the last ~150 runs (`gh run list --json`, jobs via `gh api repos/OWNER/REPO
 - **Flaky rate**: runs that failed, then passed on a rerun of the same commit.
 - **Caches**: hit rate per job, restore time vs the step it replaces, `gh api repos/OWNER/REPO/actions/cache/usage` against the 10 GB limit.
 - **Suite growth**: median minutes per run and test count, month by month.
+- **Merges without a green PR run**: PRs merged before their run finished re-run the full suite on the target branch, and leave it red when they fail.
+- **The test process itself**, on one real run: CPU use against available cores, and peak memory. Low CPU with many tests in flight means something throttles them; memory that only grows means test hosts or fixtures leak.
 
-Only the slowest job on the path to a green PR sets the wait; rank by that, not by summed CPU time.
+Wall time is what you save. Test reports sum durations across parallel tests, so a test file's summed seconds overstate its effect by roughly the parallelism; divide by it before ranking. Only the slowest job on the path to a green PR sets the wait.
 
 ## 2. Fix, biggest measured cost first
 
@@ -35,10 +37,15 @@ Each fix has a known way to backfire; check it.
 | Fix cache keys (include tool version, one key per job); save caches on main | restore is slower than the work it skips | hit rate; restore vs replaced step |
 | Blobless checkout, install only what the job uses | something reads git history (shallow clones break it) | setup seconds |
 | Match test workers to cores before adding shards; shard by recorded time | per-shard setup dominates; tests share state | slowest shard, total runner minutes |
+| .NET test hosts: free each `WebApplicationFactory` (look for per-host loggers, timers, statics that root it), then Server GC (`DOTNET_gcServer=1`, `DOTNET_GCDynamicAdaptationMode=1`) | Server GC raises memory while a leak remains | retained MB per host; step time; peak RSS |
+| One host or fixture per test class instead of per test | tests share state | step time; flake rate |
+| Flutter/Dart: per-file compilation dominates `flutter test`; run a few generated entry files that import many tests | tests that assumed their own isolate fail | step time; test count unchanged; a deliberate break still fails |
+| Wait for the PR run before merging | slower merges until the suite is fast | share of target-branch runs that re-test; red rate |
+| Build images or artifacts only where they are deployed, not on every PR | — | image-job minutes by event |
 | Faster tools (tsgo, oxlint, uv) | the tool wasn't the slow part | whole-job time, a few runs each side |
 | Bigger or faster runners, last | no queue to remove | CPU use first; the bill after |
 | Flaky test: reproduce by running it many times, fix the cause; lint-ban retries, sleeps, per-test timeouts, and untracked skips | — | red-then-green count on the same commit |
-| Too many tests: run `/prune-tests` | the cut loses real coverage | its step-4 break-the-code check |
+| Too many tests: run `/prune-tests` (usually a maintenance win; check its wall-time share first) | the cut loses real coverage | its step-4 break-the-code check |
 
 ## 3. Guardrails for the loop
 
