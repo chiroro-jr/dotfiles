@@ -79,6 +79,50 @@ Never commit API tokens, passwords, or private keys. Fish secrets belong in
 `~/.config/fish/conf.d/secrets.fish`, which is intentionally not managed by
 Stow and is ignored if accidentally copied into this repository.
 
+## Temporary WARP connectivity workaround
+
+Applied on `dennispc` on 2026-11-05. NetworkManager's connectivity probe binds
+directly to Wi-Fi and times out while Cloudflare WARP is connected, causing a
+false "limited internet access" warning even when internet access works.
+
+Disable only this computer's NetworkManager connectivity probe:
+
+```bash
+busctl set-property org.freedesktop.NetworkManager \
+  /org/freedesktop/NetworkManager org.freedesktop.NetworkManager \
+  ConnectivityCheckEnabled b false
+```
+
+NetworkManager persists this setting in
+`/var/lib/NetworkManager/NetworkManager-intern.conf`; it survives restarts.
+This is a local setting, not installed by this repository's bootstrap scripts.
+WARP stays enabled for Aplyk's private services. No `aplyk-infra` code changes
+are needed. The temporary `ping.omacom.io` exclusion was removed from the
+shared `aplyk-team` default WARP profile.
+
+Tradeoff: NetworkManager no longer detects internet outages or captive portals;
+its connected status does not prove internet access. WARP's own connectivity
+checks remain enabled. On public Wi-Fi, a portal may need to be opened manually.
+
+Check the local setting and WARP status:
+
+```bash
+busctl get-property org.freedesktop.NetworkManager \
+  /org/freedesktop/NetworkManager org.freedesktop.NetworkManager \
+  ConnectivityCheckEnabled
+warp-cli status
+```
+
+The property should read `b false`. To undo the workaround after implementing
+a permanent fix, re-enable the probe and rerun it:
+
+```bash
+busctl set-property org.freedesktop.NetworkManager \
+  /org/freedesktop/NetworkManager org.freedesktop.NetworkManager \
+  ConnectivityCheckEnabled b true
+nmcli networking connectivity check
+```
+
 ## 1Password-backed secrets
 
 The scripts default to the `Personal` vault. Override it with `OP_VAULT`; item
