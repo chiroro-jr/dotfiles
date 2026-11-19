@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Print the name of an Android emulator (AVD) this session can use.
+#
+# The base AVD (default pixel7-api36) is a template that never runs: clones
+# pixel7-api36-1, -2, ... are what sessions boot. This prints the first clone
+# no running emulator is using, or, when all are busy, makes the next clone as
+# a reflink copy of the base (near-free on btrfs; it shares the base's data
+# until it changes) and prints that.
+#
+#   android-avd [base]
+#
+# Start the printed AVD right away: the next caller treats any AVD that isn't
+# running as free.
+set -euo pipefail
+
+base=${1:-pixel7-api36}
+avd_home=${ANDROID_AVD_HOME:-${ANDROID_USER_HOME:-$HOME/.config/.android}/avd}
+emulator=${ANDROID_HOME:-$HOME/Android/Sdk}/emulator/emulator
+
+[ -d "$avd_home/$base.avd" ] || { echo "No base AVD $base in $avd_home" >&2; exit 1; }
+
+exec 9>"$avd_home/.android-avd.lock"
+flock -w 60 9
+
+running=$(adb devices | awk '$1 ~ /^emulator-/ && $2 == "device" {print $1}' |
+  while read -r serial; do adb -s "$serial" emu avd name 2>/dev/null | head -1 | tr -d '\r'; done)
+
+if grep -qx "$base" <<<"$running"; then
+  echo "The base $base is running; stop it before a clone can be made from it." >&2
+fi
+
+clones=$("$emulator" -list-avds | grep -E "^$base-[0-9]+$" | sort -t- -k3 -n || true)
+for clone in $clones; do
+  if ! grep -qx "$clone" <<<"$running"; then
+    echo "$clone"
+    exit 0
+  fi
+done
+
+if grep -qx "$base" <<<"$running"; then
+  exit 1
+fi
+
+last=$(sed -n "s/^$base-//p" <<<"$clones" | sort -n | tail -1)
+clone="$base-$(( ${last:-0} + 1 ))"
+cp -a --reflink=auto "$avd_home/$base.avd" "$avd_home/$clone.avd"
+# Runtime locks and the quick-boot snapshot belong to the base's path.
+rm -rf "$avd_home/$clone.avd"/*.lock "$avd_home/$clone.avd/snapshots" "$avd_home/$clone.avd/hardware-qemu.ini"
+sed -i "s/^AvdId=.*/AvdId=$clone/; s/^avd.ini.displayname=.*/avd.ini.displayname=$clone/" "$avd_home/$clone.avd/config.ini"
+sed "s|^path=.*|path=$avd_home/$clone.avd|; s|^path.rel=.*|path.rel=avd/$clone.avd|" \
+  "$avd_home/$base.ini" > "$avd_home/$clone.ini"
+echo "$clone"

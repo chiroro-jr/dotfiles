@@ -25,6 +25,7 @@
 ## Verification
 
 - User-visible change → after final checks, verify in browser (`chrome-devtools-cli`) or on device (`agent-device`).
+- Android emulator → boot the one `~/.agents/scripts/android-avd` prints (a free `pixel7-api36-N`, cloned from the `pixel7-api36` template when all are busy), and start it right away. Never boot or edit the template; a new device or Android version gets its own template, e.g. `pixel8-api35`.
 - Never start a dev server that may already be running: check `hitch` and `.env*` ports; ask if unclear.
 
 ## UI copy
